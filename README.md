@@ -4,7 +4,7 @@
 
 **Scan disc rips. Map titles. Queue HEVC encodes. Notify Sonarr and Radarr when done.**
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![No npm deps](https://img.shields.io/badge/npm%20deps-none-lightgrey.svg)](#install)
 
@@ -129,4 +129,4 @@ Issues and PRs welcome. Please open an issue before starting a large change.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-3.0 — see [LICENSE](LICENSE).
