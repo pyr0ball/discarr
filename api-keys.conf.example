@@ -1,0 +1,29 @@
+# Discarr — API keys config
+# Copy to ~/.config/media-postprocessor/api-keys.conf and fill in your values.
+#
+# All values can also be set as environment variables (e.g. SONARR_URL=...)
+# Environment variables override this file.
+
+# --- Sonarr ---
+SONARR_URL=http://your-sonarr-host:8989/sonarr
+SONARR_API_KEY=your-sonarr-api-key-here
+
+# --- Radarr ---
+RADARR_URL=http://your-radarr-host:7878/radarr
+RADARR_API_KEY=your-radarr-api-key-here
+
+# --- TMDB (for title matching) ---
+TMDB_API_KEY=your-tmdb-api-key-here
+
+# --- Tdarr (optional — notify on encode completion) ---
+TDARR_URL=http://your-tdarr-host:8265
+TDARR_LIBRARY_ID=your-library-id
+
+# --- SSH encoding host (optional — remote ffmpeg/HandBrake) ---
+# If set, Discarr dispatches encodes to this host via SSH instead of running locally.
+ENCODE_SSH_HOST=user@your-encode-host
+
+# --- Paths (optional overrides) ---
+# FFMPEG_BIN=/usr/bin/ffmpeg
+# FFPROBE_BIN=/usr/bin/ffprobe
+# OUTPUT_BASE=/path/to/output

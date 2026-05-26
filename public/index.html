@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discarr</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%237c6af7'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%230f1117'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%237c6af7'/%3E%3C/svg%3E" />
+<style>
+/* ── Theme (shared with recovarr) ───────────────────────────────────── */
+:root {
+  --bg:#0f1117; --surface:#1a1d27; --surface2:#252836;
+  --border:#2e3245; --accent:#7c6af7; --text:#e2e4ef;
+  --muted:#7880a0; --success:#4caf7d; --warning:#e8a93a;
+  --error:#e85858; --info:#4ab8e8; --disc:#f7a26a;
+  --radius:10px;
+  --mono:'JetBrains Mono','Fira Code','Consolas',monospace;
+  --ui:system-ui,-apple-system,sans-serif;
+}
+@media(prefers-color-scheme:light){
+  :root{--bg:#f0f2f8;--surface:#fff;--surface2:#e8eaf2;
+  --border:#cdd0e0;--accent:#5a4fcf;--text:#1a1d2e;--muted:#6068a0}
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ui);background:var(--bg);color:var(--text);min-height:100vh;padding:1rem 1rem 4rem}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.wrap{max-width:1200px;margin:0 auto}
+h1{font-size:1.25rem;font-weight:600;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem}
+h1 .badge{font-size:.65rem;font-weight:600;background:#3d2a10;color:#f7a26a;border-radius:20px;padding:.2rem .6rem;text-transform:uppercase;letter-spacing:.05em}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;margin-bottom:1rem}
+.section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.9rem;display:flex;align-items:center;gap:.5rem}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-num.done{background:var(--success)}
+
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+input[type=text]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:.85rem;padding:.55rem .75rem;outline:none}
+input[type=text]:focus{border-color:var(--accent)}
+input[type=text]::placeholder{color:var(--muted);opacity:.6}
+select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.85rem;padding:.5rem .75rem;outline:none;cursor:pointer}
+select:focus{border-color:var(--accent)}
+.row{display:flex;gap:.6rem;margin-top:.75rem;flex-wrap:wrap;align-items:center}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+button{font-family:var(--ui);font-size:.85rem;font-weight:600;border:none;border-radius:6px;padding:.5rem 1.1rem;cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){opacity:.85}
+.btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover:not(:disabled){color:var(--text);border-color:var(--muted)}
+.btn-success{background:color-mix(in srgb,var(--success) 20%,var(--surface));color:var(--success);border:1px solid var(--success)}
+.btn-success:hover:not(:disabled){background:color-mix(in srgb,var(--success) 30%,var(--surface))}
+.btn-sm{font-size:.75rem;padding:.3rem .7rem}
+.btn-xs{font-size:.7rem;padding:.2rem .5rem}
+
+/* ── Scan log ────────────────────────────────────────────────────────── */
+.log{background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:.75rem;color:var(--muted);padding:.6rem .8rem;max-height:120px;overflow-y:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+
+/* ── Map panel ───────────────────────────────────────────────────────── */
+.map-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:700px){.map-layout{grid-template-columns:1fr}}
+.panel-head{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.65rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.disk-label{font-size:.7rem;font-weight:700;color:var(--disc);text-transform:uppercase;letter-spacing:.06em;padding:.2rem .6rem;background:color-mix(in srgb,var(--disc) 12%,var(--surface2));border-radius:4px;margin-bottom:.5rem;display:inline-block}
+
+/* ── Title cards ─────────────────────────────────────────────────────── */
+.title-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.4rem;cursor:grab;user-select:none;transition:border-color .15s,opacity .15s}
+.title-card:hover{border-color:var(--accent)}
+.title-card.dragging{opacity:.4;cursor:grabbing}
+.title-card.assigned{opacity:.5;border-style:dashed}
+.tc-title{font-size:.8rem;font-weight:600;color:var(--text)}
+.tc-meta{font-size:.7rem;color:var(--muted);margin-top:.2rem;display:flex;gap:.75rem;flex-wrap:wrap}
+
+/* ── Episode slots ───────────────────────────────────────────────────── */
+.ep-slot{background:var(--surface2);border:2px dashed var(--border);border-radius:8px;padding:.55rem .75rem;margin-bottom:.4rem;transition:border-color .15s,background .15s;min-height:52px;display:flex;align-items:center;gap:.6rem}
+.ep-slot.drag-over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface2))}
+.ep-slot.assigned{border-style:solid;border-color:var(--success);background:color-mix(in srgb,var(--success) 6%,var(--surface2))}
+.ep-num{font-size:.7rem;font-weight:700;color:var(--muted);min-width:32px;flex-shrink:0}
+.ep-info{flex:1;min-width:0}
+.ep-title-text{font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ep-assigned-text{font-size:.7rem;color:var(--success);margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Series search ───────────────────────────────────────────────────── */
+.series-results{margin-top:.5rem;display:flex;flex-direction:column;gap:.35rem;max-height:220px;overflow-y:auto}
+.series-result{display:flex;align-items:center;gap:.65rem;padding:.5rem .65rem;border-radius:7px;cursor:pointer;transition:background .12s;border:1px solid transparent}
+.series-result:hover{background:var(--surface2);border-color:var(--border)}
+.series-result.active{background:color-mix(in srgb,var(--accent) 12%,var(--surface2));border-color:var(--accent)}
+.sr-poster{width:34px;height:50px;object-fit:cover;border-radius:3px;background:var(--surface2);flex-shrink:0}
+.sr-title-text{font-size:.85rem;font-weight:600}
+.sr-meta-text{font-size:.7rem;color:var(--muted);margin-top:.1rem}
+.sr-badge{font-size:.65rem;padding:.1rem .4rem;border-radius:4px;background:color-mix(in srgb,var(--info) 15%,var(--surface));color:var(--info);border:1px solid var(--info);flex-shrink:0;margin-left:auto}
+
+/* ── Season pills ────────────────────────────────────────────────────── */
+.season-pills{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+.season-pill{font-size:.75rem;padding:.3rem .7rem;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .12s}
+.season-pill:hover{border-color:var(--accent);color:var(--text)}
+.season-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ── Review table ────────────────────────────────────────────────────── */
+.review-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.review-table th{text-align:left;font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:.4rem .6rem;border-bottom:1px solid var(--border)}
+.review-table td{padding:.45rem .6rem;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);vertical-align:middle}
+.review-table tr:last-child td{border-bottom:none}
+.path-input{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:.75rem;outline:none;padding:.2rem .3rem;border-radius:4px}
+.path-input:focus{background:var(--surface2);border:1px solid var(--accent)}
+.dur{color:var(--muted);white-space:nowrap}
+.rm-btn{background:none;border:none;color:var(--error);cursor:pointer;font-size:.85rem;opacity:.6;padding:.2rem}
+.rm-btn:hover{opacity:1}
+
+/* ── Encode bar ──────────────────────────────────────────────────────── */
+.encode-bar{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap}
+.encode-field{display:flex;flex-direction:column;gap:.35rem;min-width:160px}
+.encode-field label{margin-bottom:0}
+
+/* ── Status chips ────────────────────────────────────────────────────── */
+.chip{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;font-weight:600;padding:.2rem .55rem;border-radius:20px;border:1px solid}
+.chip.ok{color:var(--success);border-color:var(--success);background:color-mix(in srgb,var(--success) 10%,transparent)}
+.chip.warn{color:var(--warning);border-color:var(--warning);background:color-mix(in srgb,var(--warning) 10%,transparent)}
+.chip.off{color:var(--muted);border-color:var(--border)}
+
+/* ── Activity panel ──────────────────────────────────────────────────── */
+.act-tabs{display:flex;gap:.35rem;margin-bottom:.75rem}
+.act-tab{font-size:.75rem;font-weight:600;padding:.3rem .75rem;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .12s}
+.act-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.act-sub{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:.6rem 0 .3rem;display:flex;align-items:center;gap:.5rem}
+.act-item{display:flex;align-items:flex-start;gap:.6rem;padding:.45rem .55rem;border-radius:6px;border:1px solid var(--border);background:var(--surface2);margin-bottom:.3rem;font-size:.78rem}
+.act-icon{font-size:.9rem;flex-shrink:0;margin-top:.05rem}
+.act-body{flex:1;min-width:0}
+.act-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-meta{font-size:.7rem;color:var(--muted);margin-top:.1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.act-release{font-size:.68rem;color:var(--muted);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.act-progress{height:3px;border-radius:2px;background:var(--border);margin-top:.3rem;overflow:hidden}
+.act-progress-bar{height:100%;background:var(--info);border-radius:2px;transition:width .4s}
+.act-age{font-size:.68rem;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.evt-grabbed{color:var(--info)}.evt-imported{color:var(--success)}.evt-deleted{color:var(--error)}.evt-ignored{color:var(--muted)}.evt-warning{color:var(--warning)}
+
+/* ── Job strip ───────────────────────────────────────────────────────── */
+.job-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;overflow:hidden}
+.job-card-head{display:flex;align-items:center;gap:.6rem;padding:.6rem .75rem;cursor:pointer;user-select:none}
+.job-card-head:hover{background:color-mix(in srgb,var(--accent) 4%,var(--surface2))}
+.jr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.jr-dot.done{background:var(--success)}.jr-dot.failed{background:var(--error)}
+.jr-dot.running{background:var(--info);animation:pulse 1.4s ease-in-out infinite}
+.jr-dot.queued{background:var(--muted)}
+.jr-path{flex:1;min-width:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.8rem;font-weight:600}
+.jr-meta{font-size:.7rem;color:var(--muted);white-space:nowrap}
+.jr-progress-wrap{padding:0 .75rem .5rem;display:flex;flex-direction:column;gap:.25rem}
+.jr-progress-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.jr-progress-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+.jr-progress-bar.failed{background:var(--error)}
+.jr-current-file{font-size:.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job-log{display:none;border-top:1px solid var(--border);background:var(--bg);padding:.5rem .75rem;max-height:220px;overflow-y:auto;font-family:var(--mono);font-size:.7rem;line-height:1.5}
+.job-log.open{display:block}
+.jl-ok{color:var(--success)}.jl-err{color:var(--error)}.jl-cmd{color:var(--muted)}.jl-info{color:var(--text)}
+
+/* ── Misc ────────────────────────────────────────────────────────────── */
+.hidden{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.divider{border:none;border-top:1px solid var(--border);margin:.75rem 0}
+.hint{font-size:.75rem;color:var(--muted)}
+.scroll-list{max-height:340px;overflow-y:auto;padding-right:2px}
+.empty-msg{text-align:center;padding:2rem;color:var(--muted);font-size:.85rem}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* ── Motion reduction ────────────────────────────────────────────────── */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+/* ── Keyboard focus ring ─────────────────────────────────────────────── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+/* suppress default outline only where we provide a visible alternative */
+input:focus-visible,select:focus-visible{outline:none}
+/* ── Keyboard-mode title select ──────────────────────────────────────── */
+.kbd-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-size:.78rem;padding:.3rem .5rem;outline:none;flex:1;cursor:pointer}
+.kbd-select:focus-visible{border-color:var(--accent);outline:2px solid var(--accent);outline-offset:2px}
+/* ── Settings panel ──────────────────────────────────────────────────── */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.65rem}
+.settings-group-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.07em;grid-column:1/-1;margin-top:.4rem}
+.settings-group-title:first-child{margin-top:0}
+.settings-field{display:flex;flex-direction:column;gap:.3rem}
+.settings-field label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.settings-footer{display:flex;align-items:center;gap:.75rem;margin-top:.85rem;flex-wrap:wrap}
+.save-status{font-size:.78rem}
+.save-status.ok{color:var(--success)}.save-status.err{color:var(--error)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>
+  Discarr
+  <span class="badge">disc → arr</span>
+  <span id="cfg-chips" style="margin-left:auto;display:flex;gap:.4rem;align-items:center"></span>
+  <button class="btn-ghost btn-xs" id="btn-settings" aria-expanded="false"
+    aria-controls="sec-settings" title="Settings" style="padding:.35rem .55rem;font-size:.95rem">⚙</button>
+</h1>
+
+<!-- Settings panel (hidden by default) -->
+<div class="section hidden" id="sec-settings" aria-label="Discarr settings">
+  <div class="section-title">Settings</div>
+  <div class="settings-grid">
+    <div class="settings-group-title">Sonarr</div>
+    <div class="settings-field">
+      <label for="cfg-sonarr-url">Sonarr URL</label>
+      <input type="text" id="cfg-sonarr-url" name="SONARR_URL"
+        placeholder="http://10.1.10.71:8989" autocomplete="off" />
+    </div>
+    <div class="settings-field">
+      <label for="cfg-sonarr-key">Sonarr API Key</label>
+      <input type="password" id="cfg-sonarr-key" name="SONARR_API_KEY"
+        placeholder="32-char hex key" autocomplete="new-password" />
+    </div>
+
+    <div class="settings-group-title">Radarr</div>
+    <div class="settings-field">
+      <label for="cfg-radarr-url">Radarr URL</label>
+      <input type="text" id="cfg-radarr-url" name="RADARR_URL"
+        placeholder="http://10.1.10.71:7878" autocomplete="off" />
+    </div>
+    <div class="settings-field">
+      <label for="cfg-radarr-key">Radarr API Key</label>
+      <input type="password" id="cfg-radarr-key" name="RADARR_API_KEY"
+        placeholder="32-char hex key" autocomplete="new-password" />
+    </div>
+
+    <div class="settings-group-title">TMDB (fallback metadata)</div>
+    <div class="settings-field">
+      <label for="cfg-tmdb-key">TMDB API Key</label>
+      <input type="password" id="cfg-tmdb-key" name="TMDB_API_KEY"
+        placeholder="v3 API key" autocomplete="new-password" />
+    </div>
+
+    <div class="settings-group-title">Tdarr (optional post-encode hook)</div>
+    <div class="settings-field">
+      <label for="cfg-tdarr-url">Tdarr URL</label>
+      <input type="text" id="cfg-tdarr-url" name="TDARR_URL"
+        placeholder="http://10.1.10.71:8265" autocomplete="off" />
+    </div>
+    <div class="settings-field">
+      <label for="cfg-tdarr-lib">Tdarr Library ID</label>
+      <input type="text" id="cfg-tdarr-lib" name="TDARR_LIBRARY_ID"
+        placeholder="Library ID from Tdarr UI" autocomplete="off" />
+    </div>
+
+    <div class="settings-group-title">Encode</div>
+    <div class="settings-field">
+      <label for="cfg-ssh-host">SSH Encode Host</label>
+      <input type="text" id="cfg-ssh-host" name="ENCODE_SSH_HOST"
+        placeholder="strahl (leave blank for local)" autocomplete="off" />
+    </div>
+    <div class="settings-field">
+      <label for="cfg-ffmpeg">FFmpeg binary</label>
+      <input type="text" id="cfg-ffmpeg" name="FFMPEG_BIN"
+        placeholder="/usr/bin/ffmpeg" autocomplete="off" />
+    </div>
+    <div class="settings-field">
+      <label for="cfg-ffprobe">FFprobe binary</label>
+      <input type="text" id="cfg-ffprobe" name="FFPROBE_BIN"
+        placeholder="/usr/bin/ffprobe" autocomplete="off" />
+    </div>
+
+    <div class="settings-group-title">Output</div>
+    <div class="settings-field" style="grid-column:1/-1">
+      <label for="cfg-output-base">Output base path</label>
+      <input type="text" id="cfg-output-base" name="OUTPUT_BASE"
+        placeholder="/Library/Series" autocomplete="off" />
+    </div>
+  </div>
+  <div class="settings-footer">
+    <button class="btn-primary btn-sm" id="btn-save-settings">Save Settings</button>
+    <button class="btn-ghost btn-sm" id="btn-close-settings">Cancel</button>
+    <span class="save-status hidden" id="settings-status" role="status" aria-live="polite"></span>
+  </div>
+</div>
+
+<!-- Step 1: Scan -->
+<div class="section" id="sec-scan">
+  <div class="section-title">
+    <span class="step-num" id="s1">1</span> Scan Source
+  </div>
+  <label for="scan-path">Source path</label>
+  <input type="text" id="scan-path"
+    placeholder="/Library/Downloads/Series/Show.Name.S02 — folder with VIDEO_TS/, BDMV/, or Disk1/ Disk2/ subdirs" />
+  <div class="row">
+    <button class="btn-primary" id="btn-scan">Scan Disc</button>
+    <span class="hint">Supports multi-disk: Disk1/VIDEO_TS, Disk2/VIDEO_TS …</span>
+  </div>
+  <div id="scan-log-wrap" class="hidden" style="margin-top:.75rem">
+    <div class="log" id="scan-log" role="log" aria-label="Scan progress" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Step 2: Map -->
+<div class="section hidden" id="sec-map">
+  <div class="section-title">
+    <span class="step-num" id="s2">2</span> Map Titles → Episodes
+  </div>
+  <div class="map-layout">
+
+    <!-- Left: disc titles -->
+    <div>
+      <div class="panel-head">
+        Disc Titles
+        <div style="display:flex;gap:.4rem">
+          <button class="btn-ghost btn-sm" id="btn-kbd-mode" aria-pressed="false"
+            title="Switch to keyboard-accessible select mode">⌨ Keyboard</button>
+          <button class="btn-ghost btn-sm" id="btn-autofill">Auto-fill in order</button>
+        </div>
+      </div>
+      <div id="title-list" class="scroll-list"></div>
+    </div>
+
+    <!-- Right: lookup + slots -->
+    <div>
+      <div class="panel-head">Episodes</div>
+      <input type="text" id="series-search" placeholder="Search series name…" />
+      <div style="display:flex;gap:.35rem;margin-top:.4rem;flex-wrap:wrap" id="browse-btns">
+        <button class="btn-ghost btn-xs" id="btn-browse-sonarr"
+          title="Browse your full Sonarr library">📺 Browse Sonarr</button>
+        <button class="btn-ghost btn-xs" id="btn-browse-radarr"
+          title="Browse your full Radarr library">🎬 Browse Radarr</button>
+      </div>
+      <div id="series-results" class="series-results hidden"></div>
+      <div id="season-pills" class="season-pills hidden"></div>
+      <div id="ep-list" class="scroll-list" style="margin-top:.65rem">
+        <div class="empty-msg">Search for a series and select a season</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+    <span class="hint" id="map-count" role="status" aria-live="polite">0 titles mapped</span>
+    <button class="btn-ghost btn-sm" id="btn-clear-map">Clear all</button>
+    <button class="btn-primary" style="margin-left:auto" id="btn-review" disabled>Review &amp; Queue →</button>
+  </div>
+</div>
+
+<!-- Step 3: Review -->
+<div class="section hidden" id="sec-review">
+  <div class="section-title">
+    <span class="step-num" id="s3">3</span> Review &amp; Encode
+  </div>
+  <table class="review-table">
+    <thead>
+      <tr><th scope="col">Title</th><th scope="col">Duration</th><th scope="col">Episode</th><th scope="col">Output path</th><th scope="col"><span class="sr-only">Actions</span></th></tr>
+    </thead>
+    <tbody id="review-body"></tbody>
+  </table>
+  <hr class="divider">
+  <div class="encode-bar">
+    <div class="encode-field">
+      <label for="preset-select">Encode preset</label>
+      <select id="preset-select">
+        <optgroup label="ffmpeg">
+          <option value="hevc-nvenc">HEVC NVENC (NVIDIA GPU)</option>
+          <option value="hevc-qsv">HEVC QSV (Intel GPU)</option>
+          <option value="hevc-vaapi">HEVC VAAPI (AMD GPU)</option>
+          <option value="x265-software" selected>x265 Software (CPU)</option>
+          <option value="h264-nvenc">H.264 NVENC (NVIDIA, fast)</option>
+        </optgroup>
+        <optgroup label="HandBrakeCLI (recommended for DVD/Blu-ray)">
+          <option value="handbrake-hevc">HandBrake x265 HEVC</option>
+          <option value="handbrake-h264">HandBrake x264 H.264</option>
+          <option value="handbrake-nvenc">HandBrake NVENC HEVC</option>
+        </optgroup>
+        <optgroup label="Custom">
+          <option value="custom">Custom script…</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="encode-field hidden" id="custom-script-wrap" style="flex:1">
+      <label for="custom-script">Script — use {input} and {output}</label>
+      <input type="text" id="custom-script"
+        placeholder="python3 /path/to/convert.py {input} -o {output}" />
+    </div>
+    <div class="encode-field">
+      <label for="encode-host">Encode host (SSH)</label>
+      <input type="text" id="encode-host" placeholder="local" style="width:150px" />
+    </div>
+    <button class="btn-success" id="btn-encode" style="margin-top:1.35rem">Queue Encode Jobs</button>
+    <button class="btn-ghost"   id="btn-back"   style="margin-top:1.35rem">← Back</button>
+  </div>
+</div>
+
+<!-- Job history -->
+<div class="section">
+  <div class="section-title" style="margin-bottom:.5rem">
+    Encode History
+    <button class="btn-ghost btn-xs" id="btn-refresh" style="margin-left:auto">Refresh</button>
+  </div>
+  <div id="job-strip"><div class="empty-msg">No jobs yet</div></div>
+</div>
+
+<!-- Arr activity -->
+<div class="section" id="sec-activity">
+  <div class="section-title" style="margin-bottom:.6rem">
+    Arr Activity
+    <button class="btn-ghost btn-xs" id="btn-refresh-activity" style="margin-left:auto"
+      aria-label="Refresh activity">Refresh</button>
+  </div>
+  <div class="act-tabs" role="tablist">
+    <button class="act-tab active" id="act-tab-sonarr" role="tab"
+      aria-selected="true" aria-controls="act-panel">Sonarr</button>
+    <button class="act-tab" id="act-tab-radarr" role="tab"
+      aria-selected="false" aria-controls="act-panel">Radarr</button>
+  </div>
+  <div id="act-panel" role="tabpanel">
+    <div class="empty-msg" id="act-loading">Loading…</div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+// ---------------------------------------------------------------------------
+// Security: always escape untrusted strings before inserting into DOM
+// ---------------------------------------------------------------------------
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const S = {
+  scanJob:  null,   // job object from POST /api/scan
+  titles:   [],     // flat array enriched with diskNum/diskType/diskPath
+  series:   null,   // selected series
+  season:   null,
+  episodes: [],
+  mappings: [],     // {titleIdx, episodeIdx, outputPath, audioTrack, subTrack}
+  config:   {},
+};
+
+// ---------------------------------------------------------------------------
+// API
+// ---------------------------------------------------------------------------
+const api = {
+  get:  url      => fetch(url).then(r=>r.json()),
+  post: (url, b) => fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
+  del:  url      => fetch(url,{method:'DELETE'}).then(r=>r.json()),
+  sse(url, onLine, onEvent) {
+    const es = new EventSource(url);
+    es.onmessage = e => onLine(JSON.parse(e.data));
+    ['scan-done','done','progress','status','mapping-done'].forEach(ev =>
+      es.addEventListener(ev, e => onEvent(ev, JSON.parse(e.data))));
+    return es;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+async function init() {
+  S.config = await api.get('/api/config').catch(()=>({}));
+  renderChips();
+  const host = S.config.encodeHost;
+  if (host) document.getElementById('encode-host').value = host;
+  // Show/hide tabs based on what's configured
+  document.getElementById('act-tab-sonarr').style.display = S.config.sonarr ? '' : 'none';
+  document.getElementById('act-tab-radarr').style.display = S.config.radarr ? '' : 'none';
+  // Default to first configured source
+  if (!S.config.sonarr && S.config.radarr) actSource = 'radarr';
+  loadJobs();
+  loadActivity(true);
+  startActivityRefresh();
+}
+
+function renderChips() {
+  const c = S.config;
+  const items = [
+    c.sonarr     ? ['Sonarr','ok']   : ['Sonarr','off'],
+    c.radarr     ? ['Radarr','ok']   : null,
+    c.tmdb       ? ['TMDB','ok']     : ['TMDB','warn'],
+    c.tdarr      ? ['Tdarr','ok']    : null,
+    c.encodeHost ? [`SSH: ${esc(c.encodeHost)}`,'ok'] : ['Local encode','warn'],
+  ].filter(Boolean);
+  const el = document.getElementById('cfg-chips');
+  el.innerHTML = '';
+  for (const [label, cls] of items) {
+    const span = document.createElement('span');
+    span.className = `chip ${cls}`;
+    span.textContent = label;
+    el.appendChild(span);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 1 — Scan
+// ---------------------------------------------------------------------------
+document.getElementById('btn-scan').addEventListener('click', startScan);
+document.getElementById('scan-path').addEventListener('keydown', e => { if(e.key==='Enter') startScan(); });
+
+async function startScan() {
+  const pathVal = document.getElementById('scan-path').value.trim();
+  if (!pathVal) return;
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true; btn.textContent = 'Scanning…';
+
+  const logWrap = document.getElementById('scan-log-wrap');
+  const logEl   = document.getElementById('scan-log');
+  logWrap.classList.remove('hidden');
+  logEl.textContent = '';
+
+  try {
+    const job = await api.post('/api/scan', { path: pathVal });
+    S.scanJob = job;
+
+    await new Promise((resolve, reject) => {
+      const es = api.sse(`/api/jobs/${job.id}/stream`,
+        line => { logEl.textContent += line + '\n'; logEl.scrollTop = logEl.scrollHeight; },
+        (evt, data) => {
+          es.close();
+          if (evt === 'scan-done') { S.scanJob.scanResult = data.result; resolve(); }
+          else reject(new Error(data.error || 'Scan failed'));
+        }
+      );
+    });
+
+    buildTitleList(S.scanJob.scanResult);
+    document.getElementById('sec-map').classList.remove('hidden');
+    document.getElementById('s1').classList.add('done');
+    document.getElementById('sec-map').scrollIntoView({behavior:'smooth',block:'start'});
+  } catch(err) {
+    logEl.textContent += `\nError: ${err.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Re-scan';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Build title cards
+// ---------------------------------------------------------------------------
+// Populate S.titles from fresh scan data, then render.
+// Call this only on initial scan. For re-renders after splits, call renderTitleList().
+function buildTitleList(scanResult) {
+  S.titles = [];
+  for (const disk of scanResult.disks) {
+    for (const title of disk.titles) {
+      S.titles.push({ ...title, diskNum: disk.diskNum, diskType: disk.type, diskPath: disk.path });
+    }
+  }
+  renderTitleList();
+}
+
+// Render title cards from the current S.titles array (preserves virtual split titles).
+function renderTitleList() {
+  const container = document.getElementById('title-list');
+  container.innerHTML = '';
+
+  let lastDisk = null;
+
+  for (let idx = 0; idx < S.titles.length; idx++) {
+    const title = S.titles[idx];
+
+    // Disk section header — only for real (non-virtual) titles
+    if (!title.splitFrom && title.diskNum !== lastDisk) {
+      const lbl = document.createElement('div');
+      lbl.className = 'disk-label';
+      lbl.textContent = `Disk ${title.diskNum} · ${title.diskType.toUpperCase()}`;
+      container.appendChild(lbl);
+      lastDisk = title.diskNum;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'title-card';
+    if (title.splitFrom !== undefined) card.style.cssText = 'margin-left:1.5rem;border-left:3px solid var(--accent)';
+    card.draggable = true;
+    card.dataset.idx = idx;
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'tc-title';
+    if (title.splitFrom !== undefined) {
+      titleEl.textContent = `↳ Part ${title.splitPart}/${title.splitTotal} · ${title.duration}`;
+    } else {
+      titleEl.textContent = `Disk ${title.diskNum} · Title ${title.titleSet}`;
+    }
+
+    const metaEl = document.createElement('div');
+    metaEl.className = 'tc-meta';
+
+    if (title.splitFrom !== undefined) {
+      // Virtual split title: show time range only
+      const span = document.createElement('span');
+      span.textContent = `${formatSecs(title.startSec)} → ${formatSecs(title.endSec)}`;
+      metaEl.appendChild(span);
+    } else {
+      const sizeMb = Math.round(title.fileSizeBytes / 1024 / 1024);
+      const audioStr = title.audioTracks.length
+        ? title.audioTracks.map(a => `${a.language.toUpperCase()} ${a.codec}`).join(', ')
+        : 'no audio';
+      const subStr = title.subtitleTracks.length
+        ? `Sub: ${title.subtitleTracks.map(s => s.language.toUpperCase()).join(', ')}`
+        : '';
+
+      [title.duration,
+       title.chapterCount ? `${title.chapterCount} ch` : null,
+       audioStr, subStr || null,
+       `${sizeMb} MB`
+      ].filter(Boolean).forEach(txt => {
+        const span = document.createElement('span');
+        span.textContent = txt;
+        metaEl.appendChild(span);
+      });
+    }
+
+    card.appendChild(titleEl);
+    card.appendChild(metaEl);
+
+    // ✂ Split button — only on real (non-virtual) titles, appended after meta
+    if (title.splitFrom === undefined) {
+      const splitBtn = document.createElement('button');
+      splitBtn.className = 'btn-ghost btn-xs';
+      splitBtn.style.cssText = 'margin-top:.4rem;width:100%';
+      splitBtn.textContent = title.chapterCount
+        ? `✂ Split (${title.chapterCount} chapters detected)`
+        : '✂ Split into segments';
+      splitBtn.setAttribute('aria-label', `Split title ${title.titleSet} into segments`);
+
+      const splitPanel = document.createElement('div');
+      splitPanel.style.cssText = 'display:none;margin-top:.5rem;padding:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:.8rem';
+
+      splitBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        splitPanel.style.display = splitPanel.style.display === 'none' ? 'block' : 'none';
+        if (splitPanel.style.display === 'block') buildSplitEditor(splitPanel, idx, title);
+      });
+
+      card.appendChild(splitBtn);
+      card.appendChild(splitPanel);
+    }
+
+    card.addEventListener('dragstart', onDragStart);
+    card.addEventListener('dragend',   onDragEnd);
+    container.appendChild(card);
+  }
+  updateMapCount();
+}
+
+// ---------------------------------------------------------------------------
+// Series search
+// ---------------------------------------------------------------------------
+let searchTimer = null;
+document.getElementById('series-search').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length < 2) { document.getElementById('series-results').classList.add('hidden'); return; }
+  searchTimer = setTimeout(() => searchSeries(q), 400);
+});
+
+// ---------------------------------------------------------------------------
+// Title splitting
+// ---------------------------------------------------------------------------
+function formatSecs(s) {
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+
+function parseSecs(str) {
+  const parts = str.trim().split(':').map(Number);
+  if (parts.length === 3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  if (parts.length === 2) return parts[0]*60  + parts[1];
+  return Number(str) || 0;
+}
+
+function buildSplitEditor(panel, titleIdx, title) {
+  panel.innerHTML = '';
+  const totalSecs = title.durationSecs || 0;
+
+  // Build initial segments list — prefer chapter marks, else equal halves
+  let segs = [];
+  if (title.chapters && title.chapters.length > 1) {
+    segs = title.chapters.map((ch, i) => ({
+      startSec: ch.startSec,
+      endSec:   title.chapters[i+1] ? title.chapters[i+1].startSec : totalSecs,
+      label:    ch.title || `Ch ${i+1}`,
+    }));
+  } else {
+    segs = [
+      { startSec: 0,                       endSec: Math.round(totalSecs/2), label: 'Part 1' },
+      { startSec: Math.round(totalSecs/2), endSec: totalSecs,               label: 'Part 2' },
+    ];
+  }
+
+  function renderSegs() {
+    panel.innerHTML = '';
+
+    // "Extract from IFO" button — inside renderSegs so it survives re-renders
+    if (!title.chapters || title.chapters.length <= 1) {
+      const ifoRow = document.createElement('div');
+      ifoRow.style.cssText = 'margin-bottom:.5rem';
+      const ifoBtn = document.createElement('button');
+      ifoBtn.className = 'btn-ghost btn-xs';
+      ifoBtn.style.width = '100%';
+      ifoBtn.textContent = '📀 Extract chapter timestamps from DVD IFO';
+      ifoBtn.setAttribute('aria-label', 'Read chapter timestamps from DVD IFO file');
+      ifoBtn.addEventListener('click', async () => {
+        ifoBtn.disabled = true;
+        ifoBtn.textContent = 'Reading IFO…';
+        try {
+          const videoTsPath = `${title.diskPath}/VIDEO_TS`;
+          const data = await api.get(
+            `/api/chapters?videoTsPath=${encodeURIComponent(videoTsPath)}&titleSet=${title.titleSet}`
+          );
+          if (data.chapters && data.chapters.length > 1) {
+            title.chapters     = data.chapters;
+            title.chapterCount = data.chapters.length;
+            ifoBtn.textContent = `✓ Found ${data.chapters.length} chapters — rebuilding…`;
+            setTimeout(() => buildSplitEditor(panel, titleIdx, title), 400);
+          } else {
+            ifoBtn.textContent = 'No chapters found in IFO — use manual split below';
+            ifoBtn.disabled = false;
+          }
+        } catch (err) {
+          ifoBtn.textContent = `Error: ${err.message}`;
+          ifoBtn.disabled = false;
+        }
+      });
+      ifoRow.appendChild(ifoBtn);
+      panel.appendChild(ifoRow);
+    }
+
+    // Preset row
+    const presetRow = document.createElement('div');
+    presetRow.style.cssText = 'display:flex;gap:.4rem;align-items:center;margin-bottom:.5rem;flex-wrap:wrap';
+
+    const nLabel = document.createElement('label');
+    nLabel.textContent = 'Split into';
+    nLabel.style.fontSize = '.78rem';
+
+    const nInput = document.createElement('input');
+    nInput.type = 'number'; nInput.min = 2; nInput.max = 99;
+    nInput.value = segs.length;
+    nInput.style.cssText = 'width:3.5rem;padding:.2rem .3rem;font-size:.78rem;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text)';
+    nInput.setAttribute('aria-label', 'Number of equal segments');
+
+    const equalBtn = document.createElement('button');
+    equalBtn.className = 'btn-ghost btn-xs';
+    equalBtn.textContent = 'equal parts';
+
+    equalBtn.addEventListener('click', () => {
+      const n = Math.max(2, Math.min(99, parseInt(nInput.value) || 2));
+      const segLen = totalSecs / n;
+      segs = Array.from({ length: n }, (_, i) => ({
+        startSec: Math.round(i * segLen),
+        endSec:   Math.round((i+1) * segLen),
+        label:    `Part ${i+1}`,
+      }));
+      renderSegs();
+    });
+
+    if (title.chapters && title.chapters.length > 1) {
+      const chBtn = document.createElement('button');
+      chBtn.className = 'btn-ghost btn-xs';
+      chBtn.textContent = `by ${title.chapters.length} chapters`;
+      chBtn.addEventListener('click', () => {
+        segs = title.chapters.map((ch, i) => ({
+          startSec: ch.startSec,
+          endSec:   title.chapters[i+1] ? title.chapters[i+1].startSec : totalSecs,
+          label:    ch.title || `Ch ${i+1}`,
+        }));
+        renderSegs();
+      });
+      presetRow.appendChild(chBtn);
+    }
+
+    presetRow.appendChild(nLabel);
+    presetRow.appendChild(nInput);
+    presetRow.appendChild(equalBtn);
+    panel.appendChild(presetRow);
+
+    // Segment rows
+    const segList = document.createElement('div');
+    segList.style.cssText = 'display:flex;flex-direction:column;gap:.25rem;margin-bottom:.5rem';
+
+    segs.forEach((seg, si) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:.3rem;align-items:center;font-size:.75rem';
+
+      const segLabel = document.createElement('span');
+      segLabel.style.cssText = 'min-width:3rem;color:var(--muted)';
+      segLabel.textContent = seg.label;
+
+      const startIn = document.createElement('input');
+      startIn.type = 'text'; startIn.value = formatSecs(seg.startSec);
+      startIn.style.cssText = 'width:6rem;padding:.15rem .3rem;font-size:.75rem;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--mono)';
+      startIn.setAttribute('aria-label', `Segment ${si+1} start time`);
+      startIn.addEventListener('change', () => { segs[si].startSec = parseSecs(startIn.value); });
+
+      const arrow = document.createElement('span');
+      arrow.textContent = '→'; arrow.style.color = 'var(--muted)';
+
+      const endIn = document.createElement('input');
+      endIn.type = 'text'; endIn.value = formatSecs(seg.endSec);
+      endIn.style.cssText = startIn.style.cssText;
+      endIn.setAttribute('aria-label', `Segment ${si+1} end time`);
+      endIn.addEventListener('change', () => { segs[si].endSec = parseSecs(endIn.value); });
+
+      const dur = document.createElement('span');
+      dur.style.cssText = 'color:var(--muted);min-width:4.5rem';
+      dur.textContent = `(${formatSecs(Math.max(0, seg.endSec - seg.startSec))})`;
+
+      row.appendChild(segLabel);
+      row.appendChild(startIn);
+      row.appendChild(arrow);
+      row.appendChild(endIn);
+      row.appendChild(dur);
+      segList.appendChild(row);
+    });
+    panel.appendChild(segList);
+
+    // Apply button
+    const applyBtn = document.createElement('button');
+    applyBtn.className = 'btn-primary btn-xs';
+    applyBtn.style.width = '100%';
+    applyBtn.textContent = `Apply — create ${segs.length} virtual titles`;
+    applyBtn.addEventListener('click', () => applySplits(titleIdx, segs, title));
+    panel.appendChild(applyBtn);
+  }
+
+  renderSegs();
+}
+
+function applySplits(originalIdx, segs, originalTitle) {
+  // Remove any existing splits for this title, then insert new virtual titles
+  S.titles = S.titles.filter(t => t.splitFrom !== originalIdx);
+  // Clear mappings that referenced the original or old splits
+  S.mappings = S.mappings.filter(m => m.titleIdx !== originalIdx
+    && !S.titles.some((t, i) => i === m.titleIdx && t.splitFrom === originalIdx));
+
+  const virtualTitles = segs.map((seg, i) => ({
+    ...originalTitle,
+    id:         `${originalTitle.id}_split_${i}`,
+    splitFrom:  originalIdx,
+    splitPart:  i + 1,
+    splitTotal: segs.length,
+    startSec:   seg.startSec,
+    endSec:     seg.endSec,
+    duration:   formatSecs(seg.endSec - seg.startSec),
+    durationSecs: seg.endSec - seg.startSec,
+    chapters:   [],
+    chapterCount: 0,
+  }));
+
+  // Insert virtual titles right after the original
+  S.titles.splice(originalIdx + 1, 0, ...virtualTitles);
+
+  // Re-render from S.titles (preserves virtual titles — don't use buildTitleList here)
+  renderTitleList();
+
+  // Auto-assign virtual titles to episodes if count matches (convenience)
+  if (S.episodes.length >= segs.length) {
+    virtualTitles.forEach((vt, vi) => {
+      const newIdx = S.titles.indexOf(vt);
+      if (newIdx >= 0) assignTitle(newIdx, vi);
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Series search
+// ---------------------------------------------------------------------------
+async function searchSeries(q) {
+  const results = await api.get(`/api/lookup?q=${encodeURIComponent(q)}&type=series`);
+  const container = document.getElementById('series-results');
+  container.innerHTML = '';
+  container.classList.remove('hidden');
+
+  // Reset browse button states when doing a manual search
+  document.getElementById('btn-browse-sonarr').classList.remove('btn-primary');
+  document.getElementById('btn-browse-sonarr').classList.add('btn-ghost');
+  document.getElementById('btn-browse-radarr').classList.remove('btn-primary');
+  document.getElementById('btn-browse-radarr').classList.add('btn-ghost');
+
+  if (!results.length) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-msg';
+    msg.style.padding = '.75rem';
+    msg.textContent = 'No results';
+    container.appendChild(msg);
+    return;
+  }
+
+  renderSeriesResults(results, container, false);
+  container._results = results;
+}
+
+// Browse full Sonarr/Radarr library
+document.getElementById('btn-browse-sonarr').addEventListener('click', () => browseLibrary('sonarr'));
+document.getElementById('btn-browse-radarr').addEventListener('click', () => browseLibrary('radarr'));
+
+async function browseLibrary(source) {
+  const container = document.getElementById('series-results');
+  container.innerHTML = '';
+  container.classList.remove('hidden');
+
+  const loading = document.createElement('div');
+  loading.className = 'empty-msg';
+  loading.style.padding = '.75rem';
+  loading.textContent = `Loading ${source} library…`;
+  container.appendChild(loading);
+
+  // Mark active browse button
+  document.getElementById('btn-browse-sonarr').classList.toggle('btn-primary', source === 'sonarr');
+  document.getElementById('btn-browse-sonarr').classList.toggle('btn-ghost',   source !== 'sonarr');
+  document.getElementById('btn-browse-radarr').classList.toggle('btn-primary', source === 'radarr');
+  document.getElementById('btn-browse-radarr').classList.toggle('btn-ghost',   source !== 'radarr');
+
+  try {
+    const results = await api.get(`/api/library?source=${source}`);
+    container.innerHTML = '';
+    if (!results.length) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-msg';
+      msg.style.padding = '.75rem';
+      msg.textContent = `No items found in ${source}`;
+      container.appendChild(msg);
+      return;
+    }
+
+    // Inline filter so users can find items with 0 missing (unmonitored, etc.)
+    const filterWrap = document.createElement('div');
+    filterWrap.style.cssText = 'padding:.3rem .1rem .3rem;position:sticky;top:0;background:var(--surface2);z-index:1';
+    const filterInput = document.createElement('input');
+    filterInput.type = 'text';
+    filterInput.placeholder = `Filter ${results.length} items…`;
+    filterInput.style.cssText = 'width:100%;font-size:.8rem;padding:.25rem .4rem;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text)';
+    filterInput.setAttribute('aria-label', `Filter ${source} library results`);
+    filterWrap.appendChild(filterInput);
+    container.appendChild(filterWrap);
+
+    const listWrap = document.createElement('div');
+    container.appendChild(listWrap);
+    container._results = results;
+
+    function applyFilter(q) {
+      listWrap.innerHTML = '';
+      const filtered = q
+        ? results.filter(s => s.title.toLowerCase().includes(q.toLowerCase()))
+        : results;
+      if (!filtered.length) {
+        const none = document.createElement('div');
+        none.className = 'empty-msg';
+        none.style.padding = '.5rem';
+        none.textContent = 'No matches';
+        listWrap.appendChild(none);
+        listWrap._results = [];
+      } else {
+        renderSeriesResults(filtered, listWrap, /* showMissing= */ true);
+        listWrap._results = filtered;
+      }
+    }
+    filterInput.addEventListener('input', e => applyFilter(e.target.value));
+    filterInput.addEventListener('keydown', e => {
+      // Enter selects first result
+      if (e.key === 'Enter' && listWrap._results?.length) {
+        selectSeries(listWrap._results[0], listWrap);
+      }
+    });
+    applyFilter('');
+    // Auto-focus the filter so user can type immediately
+    setTimeout(() => filterInput.focus(), 50);
+
+  } catch(err) {
+    container.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.className = 'empty-msg';
+    msg.style.padding = '.75rem';
+    msg.textContent = `Error: ${err.message}`;
+    container.appendChild(msg);
+  }
+}
+
+function renderSeriesResults(results, container, showMissing = false) {
+  results.forEach((s) => {
+    const el = document.createElement('div');
+    el.className = 'series-result';
+    el.setAttribute('role', 'option');
+
+    const img = document.createElement('img');
+    img.className = 'sr-poster';
+    img.alt = '';
+    if (s.poster) { img.src = s.poster; img.onerror = () => { img.style.display='none'; }; }
+    else img.style.display = 'none';
+
+    const info = document.createElement('div');
+    info.style.flex = '1';
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'sr-title-text';
+    titleDiv.textContent = s.title;
+    const metaDiv = document.createElement('div');
+    metaDiv.className = 'sr-meta-text';
+    let metaParts = [];
+    if (s.year) metaParts.push(s.year);
+    if (s.source) metaParts.push(s.source);
+    metaDiv.textContent = metaParts.join(' · ');
+    info.appendChild(titleDiv);
+    info.appendChild(metaDiv);
+
+    el.appendChild(img);
+    el.appendChild(info);
+
+    if (s.inLibrary) {
+      const badge = document.createElement('span');
+      if (showMissing && s.missing > 0) {
+        badge.className = 'sr-badge';
+        badge.style.borderColor = 'var(--warning)';
+        badge.style.color = 'var(--warning)';
+        badge.style.background = 'color-mix(in srgb,var(--warning) 12%,var(--surface))';
+        badge.textContent = `${s.missing} missing`;
+      } else if (showMissing && s.missing === 0) {
+        badge.className = 'sr-badge';
+        badge.style.borderColor = 'var(--success)';
+        badge.style.color = 'var(--success)';
+        badge.style.background = 'color-mix(in srgb,var(--success) 12%,var(--surface))';
+        badge.textContent = 'complete';
+      } else {
+        badge.className = 'sr-badge';
+        badge.textContent = 'In Library';
+      }
+      el.appendChild(badge);
+    }
+
+    el.addEventListener('click', () => selectSeries(s, container));
+    container.appendChild(el);
+  });
+}
+
+function selectSeries(series, container) {
+  S.series = series;
+  container.querySelectorAll('.series-result').forEach((el, idx) => {
+    el.classList.toggle('active', container._results?.[idx] === series);
+  });
+
+  const pillsEl = document.getElementById('season-pills');
+  pillsEl.innerHTML = '';
+
+  // Radarr movies have no seasons — create a single synthetic "movie slot" directly
+  if (series.source === 'radarr') {
+    pillsEl.classList.add('hidden');
+    S.season = 0;
+    S.episodes = [{
+      episode: 1, season: 0,
+      title: series.title,
+      airDate: String(series.year || ''),
+      hasFile: series.hasFile || false,
+    }];
+    renderEpSlots();
+    return;
+  }
+
+  pillsEl.classList.remove('hidden');
+  const seasons = series.seasons?.length ? series.seasons : [...Array(10)].map((_,i)=>i+1);
+  for (const sNum of seasons) {
+    const pill = document.createElement('button');
+    pill.className = 'season-pill';
+    pill.textContent = `S${String(sNum).padStart(2,'0')}`;
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.season-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectSeason(sNum);
+    });
+    pillsEl.appendChild(pill);
+  }
+  if (pillsEl.firstChild) pillsEl.firstChild.click();
+}
+
+async function selectSeason(seasonNum) {
+  S.season = seasonNum;
+  const epList = document.getElementById('ep-list');
+  epList.innerHTML = '';
+  const loading = document.createElement('div');
+  loading.className = 'empty-msg';
+  loading.textContent = 'Loading episodes…';
+  epList.appendChild(loading);
+
+  try {
+    S.episodes = await api.get(
+      `/api/lookup/${S.series.source}/${S.series.id}/episodes?season=${seasonNum}`);
+    renderEpSlots();
+  } catch(err) {
+    epList.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.className = 'empty-msg';
+    msg.textContent = err.message;
+    epList.appendChild(msg);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Episode slots
+// ---------------------------------------------------------------------------
+function renderEpSlots() {
+  const container = document.getElementById('ep-list');
+  container.innerHTML = '';
+
+  if (!S.episodes.length) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-msg';
+    msg.textContent = 'No episodes found for this season';
+    container.appendChild(msg);
+    return;
+  }
+
+  S.episodes.forEach((ep, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'ep-slot';
+    slot.dataset.epIdx = i;
+
+    const numSpan = document.createElement('span');
+    numSpan.className = 'ep-num';
+    // For movies (season 0) show a film icon instead of episode number
+    numSpan.textContent = S.season === 0 ? '🎬' : `E${String(ep.episode).padStart(2,'0')}`;
+
+    const info = document.createElement('div');
+    info.className = 'ep-info';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'ep-title-text';
+    titleDiv.textContent = ep.title;
+    if (ep.airDate) {
+      const sub = document.createElement('div');
+      sub.style.cssText = 'font-size:.75rem;opacity:.6';
+      sub.textContent = ep.airDate;
+      info.appendChild(titleDiv);
+      info.appendChild(sub);
+    } else {
+      info.appendChild(titleDiv);
+    }
+
+    const existing = S.mappings.find(m => m.episodeIdx === i);
+
+    if (kbdMode) {
+      // Keyboard mode: select dropdown replaces drag target
+      const sel = document.createElement('select');
+      sel.className = 'kbd-select';
+      sel.setAttribute('aria-label', `Title for E${String(ep.episode).padStart(2,'0')} ${ep.title}`);
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = '— unassigned —';
+      sel.appendChild(blank);
+      S.titles.forEach((t, ti) => {
+        const opt = document.createElement('option');
+        opt.value = ti;
+        opt.textContent = titleLabel(t);
+        // Disable titles already assigned to other episodes
+        const usedBy = S.mappings.find(m => m.titleIdx === ti);
+        if (usedBy && usedBy.episodeIdx !== i) opt.disabled = true;
+        sel.appendChild(opt);
+      });
+      if (existing) sel.value = existing.titleIdx;
+      sel.addEventListener('change', e => {
+        const val = e.target.value;
+        if (val === '') unassign(i);
+        else assignTitle(parseInt(val, 10), i);
+      });
+      slot.appendChild(numSpan);
+      slot.appendChild(info);
+      slot.appendChild(sel);
+      if (existing) slot.classList.add('assigned');
+    } else if (existing) {
+      slot.classList.add('assigned');
+      const aDiv = document.createElement('div');
+      aDiv.className = 'ep-assigned-text';
+      aDiv.textContent = `← ${titleLabel(S.titles[existing.titleIdx])}`;
+      info.appendChild(aDiv);
+
+      const unBtn = document.createElement('button');
+      unBtn.className = 'btn-ghost btn-xs';
+      unBtn.textContent = '✕';
+      unBtn.style.marginLeft = 'auto';
+      unBtn.title = 'Unassign';
+      unBtn.setAttribute('aria-label', `Unassign ${ep.title}`);
+      unBtn.addEventListener('click', e => { e.stopPropagation(); unassign(i); });
+      slot.appendChild(numSpan);
+      slot.appendChild(info);
+      slot.appendChild(unBtn);
+    } else {
+      slot.appendChild(numSpan);
+      slot.appendChild(info);
+    }
+
+    if (!kbdMode) {
+      // Drag handle for reordering episode slots
+      const handle = document.createElement('span');
+      handle.textContent = '⠿';
+      handle.title = 'Drag to reorder assignment';
+      handle.style.cssText = 'cursor:grab;color:var(--muted);font-size:1rem;padding:0 .3rem;flex-shrink:0;touch-action:none';
+      handle.draggable = true;
+      handle.addEventListener('dragstart', onEpDragStart);
+      handle.addEventListener('dragend',   onEpDragEnd);
+      slot.insertBefore(handle, slot.firstChild);
+
+      slot.addEventListener('dragover',  onDragOver);
+      slot.addEventListener('dragleave', onDragLeave);
+      slot.addEventListener('drop',      onDrop);
+    }
+    container.appendChild(slot);
+  });
+}
+
+function titleLabel(t) {
+  return t ? `Disk ${t.diskNum} · Title ${t.titleSet} (${t.duration})` : '?';
+}
+
+// ---------------------------------------------------------------------------
+// Drag and drop
+// ---------------------------------------------------------------------------
+let draggingIdx    = null;  // title card drag
+let draggingEpIdx  = null;  // episode slot drag
+
+function onDragStart(e) {
+  draggingIdx = parseInt(e.currentTarget.dataset.idx);
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  draggingIdx = null;
+}
+function onEpDragStart(e) {
+  draggingEpIdx = parseInt(e.currentTarget.closest('.ep-slot').dataset.epIdx);
+  e.currentTarget.closest('.ep-slot').classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.stopPropagation();
+}
+function onEpDragEnd(e) {
+  document.querySelectorAll('.ep-slot.dragging').forEach(el => el.classList.remove('dragging'));
+  draggingEpIdx = null;
+}
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const targetEpIdx = parseInt(e.currentTarget.dataset.epIdx);
+
+  if (draggingEpIdx !== null && draggingEpIdx !== targetEpIdx) {
+    // Swap title assignments between two episode slots
+    const srcMap = S.mappings.find(m => m.episodeIdx === draggingEpIdx);
+    const dstMap = S.mappings.find(m => m.episodeIdx === targetEpIdx);
+    if (srcMap && dstMap) {
+      [srcMap.titleIdx, dstMap.titleIdx] = [dstMap.titleIdx, srcMap.titleIdx];
+      [srcMap.startSec, dstMap.startSec] = [dstMap.startSec, srcMap.startSec];
+      [srcMap.endSec,   dstMap.endSec]   = [dstMap.endSec,   srcMap.endSec];
+      srcMap.outputPath = buildOutputPath(S.episodes[draggingEpIdx]);
+      dstMap.outputPath = buildOutputPath(S.episodes[targetEpIdx]);
+    } else if (srcMap) {
+      srcMap.episodeIdx = targetEpIdx;
+      srcMap.outputPath = buildOutputPath(S.episodes[targetEpIdx]);
+    } else if (dstMap) {
+      dstMap.episodeIdx = draggingEpIdx;
+      dstMap.outputPath = buildOutputPath(S.episodes[draggingEpIdx]);
+    }
+    const assignedIdxs = new Set(S.mappings.map(m => m.titleIdx));
+    document.querySelectorAll('.title-card').forEach(c =>
+      c.classList.toggle('assigned', assignedIdxs.has(parseInt(c.dataset.idx))));
+    renderEpSlots();
+    updateMapCount();
+    draggingEpIdx = null;
+  } else if (draggingIdx !== null) {
+    // Title card dropped onto episode slot
+    assignTitle(draggingIdx, targetEpIdx);
+  }
+}
+
+function assignTitle(titleIdx, epIdx) {
+  S.mappings = S.mappings.filter(m => m.titleIdx !== titleIdx && m.episodeIdx !== epIdx);
+  const ep = S.episodes[epIdx];
+  const t  = S.titles[titleIdx];
+  S.mappings.push({
+    titleIdx, episodeIdx: epIdx, audioTrack: 0, subTrack: -1,
+    outputPath: buildOutputPath(ep),
+    // Carry split bounds if this is a virtual split title
+    startSec: t?.startSec ?? 0,
+    endSec:   t?.endSec   ?? 0,
+  });
+  document.querySelectorAll('.title-card').forEach(c => {
+    c.classList.toggle('assigned', parseInt(c.dataset.idx) === titleIdx);
+  });
+  renderEpSlots();
+  updateMapCount();
+  document.getElementById('btn-review').disabled = S.mappings.length === 0;
+}
+
+function unassign(epIdx) {
+  const m = S.mappings.find(m => m.episodeIdx === epIdx);
+  if (!m) return;
+  document.querySelectorAll('.title-card').forEach(c => {
+    if (parseInt(c.dataset.idx) === m.titleIdx) c.classList.remove('assigned');
+  });
+  S.mappings = S.mappings.filter(x => x.episodeIdx !== epIdx);
+  renderEpSlots();
+  updateMapCount();
+  document.getElementById('btn-review').disabled = S.mappings.length === 0;
+}
+
+function buildOutputPath(ep) {
+  if (!S.series) return '';
+  const safe = s => String(s).replace(/[<>:"/\\|?*]/g,'').replace(/\s+/g,' ').trim();
+  const title = safe(S.series.title);
+  const year  = S.series.year || '';
+  const dir   = year ? `${title} (${year})` : title;
+
+  // Radarr movie: flat Movies/<dir>/<dir>.mkv
+  if (S.series.source === 'radarr') {
+    const base = (S.config.movieBase || S.config.outputBase || '/Library/Movies').replace(/\/$/, '');
+    return `${base}/${dir}/${dir}.mkv`;
+  }
+
+  // Sonarr / TV episode
+  const sn      = String(S.season).padStart(2,'0');
+  const en      = String(ep.episode).padStart(2,'0');
+  const epTitle = safe(ep.title || '');
+  const base    = (S.config.outputBase || '/Library/Series').replace(/\/$/, '');
+  return `${base}/${dir}/Season ${parseInt(sn)}/${title} - S${sn}E${en} - ${epTitle}.mkv`;
+}
+
+document.getElementById('btn-autofill').addEventListener('click', () => {
+  if (!S.episodes.length) return;
+  S.mappings = [];
+  // Skip parent titles that have been split — virtual children are the assignable units
+  const hasSplitChildren = new Set(S.titles.filter(t => t.splitFrom != null).map(t => t.splitFrom));
+  const assignable = S.titles.map((t, i) => ({ t, i })).filter(({ i }) => !hasSplitChildren.has(i));
+  const limit = Math.min(assignable.length, S.episodes.length);
+  for (let ei = 0; ei < limit; ei++) {
+    const { t, i: titleIdx } = assignable[ei];
+    const ep = S.episodes[ei];
+    S.mappings.push({
+      titleIdx, episodeIdx: ei, audioTrack: 0, subTrack: -1,
+      outputPath: buildOutputPath(ep),
+      startSec: t?.startSec ?? 0,
+      endSec:   t?.endSec   ?? 0,
+    });
+  }
+  // Batch DOM update — mark all assigned title cards at once
+  const assignedIdxs = new Set(S.mappings.map(m => m.titleIdx));
+  document.querySelectorAll('.title-card').forEach(c =>
+    c.classList.toggle('assigned', assignedIdxs.has(parseInt(c.dataset.idx))));
+  renderEpSlots();
+  updateMapCount();
+  document.getElementById('btn-review').disabled = S.mappings.length === 0;
+});
+
+document.getElementById('btn-clear-map').addEventListener('click', () => {
+  S.mappings = [];
+  document.querySelectorAll('.title-card').forEach(c => c.classList.remove('assigned'));
+  renderEpSlots();
+  updateMapCount();
+  document.getElementById('btn-review').disabled = true;
+});
+
+function updateMapCount() {
+  document.getElementById('map-count').textContent =
+    `${S.mappings.length} of ${S.titles.length} title(s) mapped`;
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 — Review
+// ---------------------------------------------------------------------------
+document.getElementById('btn-review').addEventListener('click', buildReview);
+document.getElementById('btn-back').addEventListener('click', () => {
+  document.getElementById('sec-review').classList.add('hidden');
+});
+
+function buildReview() {
+  const tbody = document.getElementById('review-body');
+  tbody.innerHTML = '';
+
+  [...S.mappings].sort((a,b) => a.episodeIdx - b.episodeIdx).forEach(m => {
+    const t  = S.titles[m.titleIdx];
+    const ep = S.episodes[m.episodeIdx];
+    const tr = document.createElement('tr');
+
+    // Title cell
+    const tdTitle = document.createElement('td');
+    tdTitle.style.whiteSpace = 'nowrap';
+    tdTitle.textContent = `Disk ${t.diskNum} · T${t.titleSet}`;
+
+    // Duration
+    const tdDur = document.createElement('td');
+    tdDur.className = 'dur';
+    tdDur.textContent = t.duration;
+
+    // Episode
+    const tdEp = document.createElement('td');
+    tdEp.style.whiteSpace = 'nowrap';
+    tdEp.textContent = `S${String(S.season).padStart(2,'0')}E${String(ep.episode).padStart(2,'0')} ${ep.title}`;
+
+    // Output path (editable)
+    const tdPath = document.createElement('td');
+    const pathInput = document.createElement('input');
+    pathInput.className = 'path-input';
+    pathInput.type = 'text';
+    pathInput.value = m.outputPath;
+    pathInput.addEventListener('change', e => { m.outputPath = e.target.value; });
+    tdPath.appendChild(pathInput);
+
+    // Remove
+    const tdRm = document.createElement('td');
+    const rmBtn = document.createElement('button');
+    rmBtn.className = 'rm-btn';
+    rmBtn.textContent = '✕';
+    rmBtn.title = 'Remove';
+    rmBtn.setAttribute('aria-label', `Remove ${ep.title} from queue`);
+    rmBtn.addEventListener('click', () => { unassign(m.episodeIdx); buildReview(); });
+    tdRm.appendChild(rmBtn);
+
+    tr.appendChild(tdTitle); tr.appendChild(tdDur);
+    tr.appendChild(tdEp);    tr.appendChild(tdPath); tr.appendChild(tdRm);
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('sec-review').classList.remove('hidden');
+  document.getElementById('s3').classList.add('done');
+  document.getElementById('sec-review').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+document.getElementById('preset-select').addEventListener('change', e => {
+  document.getElementById('custom-script-wrap').classList.toggle('hidden', e.target.value !== 'custom');
+});
+
+document.getElementById('btn-encode').addEventListener('click', submitEncode);
+
+async function submitEncode() {
+  const preset       = document.getElementById('preset-select').value;
+  const customScript = document.getElementById('custom-script').value.trim();
+  const encodeHost   = document.getElementById('encode-host').value.trim();
+
+  const mappings = S.mappings.map(m => {
+    const t = S.titles[m.titleIdx];
+    const videoTsBase = `${t.diskPath}/VIDEO_TS`;
+    return {
+      diskPath:     t.diskPath,
+      diskType:     t.diskType,
+      titleSet:     t.titleSet,
+      hbTitle:      t.hbTitle ?? null,
+      vobPaths:     t.hbScan ? [] : (t.vobFiles ? t.vobFiles.map(f => `${videoTsBase}/${f}`) : []),
+      filePath:     t.file
+          ? (t.diskType === 'video'
+              ? `${t.diskPath}/${t.file}`
+              : `${t.diskPath}/BDMV/STREAM/${t.file}`)
+          : null,
+      outputPath:   m.outputPath,
+      preset:       preset === 'custom' ? null : preset,
+      customScript: preset === 'custom' ? customScript : null,
+      audioTrack:   m.audioTrack ?? 0,
+      subTrack:     m.subTrack   ?? -1,
+      // Split title bounds — 0 means no trimming
+      startSec:     m.startSec  || 0,
+      endSec:       m.endSec    || 0,
+    };
+  });
+
+  const btn = document.getElementById('btn-encode');
+  btn.disabled = true; btn.textContent = 'Queuing…';
+
+  try {
+    await api.post('/api/encode', {
+      sourcePath: S.scanJob?.scanResult?.sourcePath || '',
+      mappings,
+      preset,
+      ...(encodeHost && encodeHost !== 'local' ? { encodeHost } : {}),
+    });
+    document.getElementById('sec-review').classList.add('hidden');
+    document.getElementById('sec-map').classList.add('hidden');
+    document.getElementById('s2').classList.add('done');
+    loadJobs();
+    document.querySelector('.section:last-child').scrollIntoView({behavior:'smooth'});
+  } catch(err) {
+    alert(`Failed to queue: ${err.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Queue Encode Jobs';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Job history
+// ---------------------------------------------------------------------------
+// Active SSE connections keyed by job id — closed when job finishes or card removed
+const jobSseMap = new Map();
+
+function fmtElapsed(ms) {
+  if (ms < 60000) return `${Math.round(ms/1000)}s`;
+  const m = Math.floor(ms/60000), s = Math.round((ms%60000)/1000);
+  return `${m}m ${s}s`;
+}
+
+function appendLogLine(logEl, text) {
+  const line = document.createElement('div');
+  if (text.includes('✓') || text.includes('Done:'))       line.className = 'jl-ok';
+  else if (text.includes('✗') || text.includes('FAILED')) line.className = 'jl-err';
+  else if (text.startsWith('[encode] HandBrake:') || text.startsWith('[encode] ffmpeg'))
+                                                           line.className = 'jl-cmd';
+  else                                                     line.className = 'jl-info';
+  line.textContent = text;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function buildJobCard(j) {
+  const total   = j.mappings?.length || 0;
+  const prog    = j.progress || { current: 0, total, currentFile: null, failed: 0 };
+  const done    = prog.current;
+  const pct     = total > 0 ? Math.round((done / total) * 100) : 0;
+  const anyFail = (prog.failed || 0) > 0;
+  const elapsed = j.startedAt ? fmtElapsed((j.finishedAt || Date.now()) - j.startedAt) : null;
+
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  card.dataset.jobId = j.id;
+
+  // ── Header row ──────────────────────────────────────────────────────
+  const head = document.createElement('div');
+  head.className = 'job-card-head';
+
+  const dot = document.createElement('div');
+  dot.className = `jr-dot ${j.status}`;
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'jr-path';
+  nameEl.textContent = j.sourcePath ? j.sourcePath.split('/').pop() : j.id;
+  nameEl.title = j.sourcePath || j.id;
+
+  const metaEl = document.createElement('div');
+  metaEl.className = 'jr-meta';
+  metaEl.textContent = [
+    j.status === 'running' ? `${done}/${total}` : `${total} file${total !== 1 ? 's' : ''}`,
+    elapsed ? `· ${elapsed}` : null,
+    j.status !== 'running' ? `· ${j.status}` : null,
+  ].filter(Boolean).join(' ');
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn-ghost btn-xs';
+  delBtn.textContent = '✕';
+  delBtn.setAttribute('aria-label', `Delete job ${j.id}`);
+  delBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const sse = jobSseMap.get(j.id);
+    if (sse) { sse.close(); jobSseMap.delete(j.id); }
+    await api.del(`/api/jobs/${j.id}?force=true`);
+    loadJobs();
+  });
+
+  head.appendChild(dot); head.appendChild(nameEl);
+  head.appendChild(metaEl); head.appendChild(delBtn);
+  card.appendChild(head);
+
+  // ── Progress bar (running or finished with partial failure) ─────────
+  if (total > 0 && (j.status === 'running' || j.status === 'done' || j.status === 'failed')) {
+    const wrap = document.createElement('div');
+    wrap.className = 'jr-progress-wrap';
+
+    const barBg = document.createElement('div');
+    barBg.className = 'jr-progress-bar-bg';
+    const bar = document.createElement('div');
+    bar.className = `jr-progress-bar${anyFail ? ' failed' : ''}`;
+    bar.style.width = `${pct}%`;
+    bar.dataset.bar = '';
+    barBg.appendChild(bar);
+    wrap.appendChild(barBg);
+
+    if (prog.currentFile) {
+      const cf = document.createElement('div');
+      cf.className = 'jr-current-file';
+      cf.textContent = prog.currentFile;
+      cf.dataset.currentFile = '';
+      wrap.appendChild(cf);
+    }
+    card.appendChild(wrap);
+  }
+
+  // ── Log panel (collapsed by default) ────────────────────────────────
+  const logEl = document.createElement('div');
+  logEl.className = 'job-log';
+  // Fetch full lines on demand
+  head.addEventListener('click', async () => {
+    logEl.classList.toggle('open');
+    if (logEl.classList.contains('open') && logEl.children.length === 0) {
+      const full = await api.get(`/api/jobs/${j.id}`).catch(() => null);
+      if (full?.lines) full.lines.forEach(l => appendLogLine(logEl, l));
+    }
+  });
+  card.appendChild(logEl);
+
+  // ── Live SSE for running jobs ────────────────────────────────────────
+  if (j.status === 'running' && !jobSseMap.has(j.id)) {
+    const sse = api.sse(`/api/jobs/${j.id}/stream`,
+      line => {
+        if (logEl.classList.contains('open')) appendLogLine(logEl, line);
+      },
+      (event, data) => {
+        if (event === 'progress') {
+          const total = data.total || 1;
+          const pct   = Math.round((data.current / total) * 100);
+          const bar   = card.querySelector('[data-bar]');
+          if (bar) bar.style.width = `${pct}%`;
+          const cf = card.querySelector('[data-current-file]');
+          if (cf && data.currentFile) cf.textContent = data.currentFile;
+          metaEl.textContent = `${data.current}/${total} · ${fmtElapsed(Date.now() - j.startedAt)}`;
+        }
+        if (event === 'done') {
+          sse.close(); jobSseMap.delete(j.id);
+          setTimeout(loadJobs, 300);
+        }
+      }
+    );
+    // Also listen for progress events on the SSE object
+    sse.addEventListener('progress', e => {
+      const data = JSON.parse(e.data);
+      const total = data.total || 1;
+      const pct   = Math.round((data.current / total) * 100);
+      const bar   = card.querySelector('[data-bar]');
+      if (bar) bar.style.width = `${pct}%`;
+      const cf = card.querySelector('[data-current-file]');
+      if (cf && data.currentFile) cf.textContent = data.currentFile;
+      metaEl.textContent = `${data.current}/${total} · ${fmtElapsed(Date.now() - (j.startedAt||Date.now()))}`;
+    });
+    jobSseMap.set(j.id, sse);
+  }
+
+  return card;
+}
+
+async function loadJobs() {
+  const jobs  = await api.get('/api/jobs').catch(() => []);
+  const strip = document.getElementById('job-strip');
+  const encJobs = jobs.filter(j => j.type === 'encode').slice(0, 20);
+  strip.innerHTML = '';
+
+  if (!encJobs.length) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-msg';
+    msg.textContent = 'No encode jobs yet';
+    strip.appendChild(msg);
+    return;
+  }
+
+  for (const j of encJobs) strip.appendChild(buildJobCard(j));
+}
+
+document.getElementById('btn-refresh').addEventListener('click', loadJobs);
+
+// ---------------------------------------------------------------------------
+// Settings panel
+// ---------------------------------------------------------------------------
+const settingsFieldMap = {
+  'SONARR_URL':      'cfg-sonarr-url',
+  'SONARR_API_KEY':  'cfg-sonarr-key',
+  'RADARR_URL':      'cfg-radarr-url',
+  'RADARR_API_KEY':  'cfg-radarr-key',
+  'TMDB_API_KEY':    'cfg-tmdb-key',
+  'TDARR_URL':       'cfg-tdarr-url',
+  'TDARR_LIBRARY_ID':'cfg-tdarr-lib',
+  'ENCODE_SSH_HOST': 'cfg-ssh-host',
+  'FFMPEG_BIN':      'cfg-ffmpeg',
+  'FFPROBE_BIN':     'cfg-ffprobe',
+  'OUTPUT_BASE':     'cfg-output-base',
+};
+
+document.getElementById('btn-settings').addEventListener('click', async () => {
+  const panel = document.getElementById('sec-settings');
+  const btn   = document.getElementById('btn-settings');
+  const open  = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !open);
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) await loadSettingsPanel();
+});
+
+document.getElementById('btn-close-settings').addEventListener('click', () => {
+  document.getElementById('sec-settings').classList.add('hidden');
+  document.getElementById('btn-settings').setAttribute('aria-expanded', 'false');
+});
+
+async function loadSettingsPanel() {
+  const settings = await api.get('/api/settings').catch(() => ({}));
+  for (const [key, elId] of Object.entries(settingsFieldMap)) {
+    const el = document.getElementById(elId);
+    if (!el) continue;
+    const val = settings[key] || '';
+    // For masked placeholders use the input placeholder text, not the value
+    el.value = val === '[configured]' ? '' : val;
+    if (val === '[configured]') el.placeholder = '[configured — leave blank to keep]';
+  }
+}
+
+document.getElementById('btn-save-settings').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-save-settings');
+  const status = document.getElementById('settings-status');
+  btn.disabled = true;
+  status.textContent = '';
+  status.className   = 'save-status hidden';
+
+  const body = {};
+  for (const [key, elId] of Object.entries(settingsFieldMap)) {
+    const el = document.getElementById(elId);
+    if (el) body[key] = el.value.trim();
+  }
+
+  try {
+    await api.post('/api/settings', body);
+    // Re-probe capabilities and refresh chips
+    S.config = await api.get('/api/config').catch(() => S.config);
+    renderChips();
+    // Update encode-host field if changed
+    if (body.ENCODE_SSH_HOST !== undefined) {
+      const encEl = document.getElementById('encode-host');
+      if (encEl && body.ENCODE_SSH_HOST) encEl.value = body.ENCODE_SSH_HOST;
+    }
+    status.textContent = '✓ Saved';
+    status.className   = 'save-status ok';
+  } catch(err) {
+    status.textContent = `Error: ${err.message}`;
+    status.className   = 'save-status err';
+  } finally {
+    btn.disabled = false;
+    status.classList.remove('hidden');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Keyboard mode (WCAG 2.1.1 — keyboard alternative to drag-and-drop)
+// ---------------------------------------------------------------------------
+let kbdMode = false;
+
+document.getElementById('btn-kbd-mode').addEventListener('click', () => {
+  kbdMode = !kbdMode;
+  const btn = document.getElementById('btn-kbd-mode');
+  btn.setAttribute('aria-pressed', String(kbdMode));
+  btn.classList.toggle('btn-primary', kbdMode);
+  btn.classList.toggle('btn-ghost',   !kbdMode);
+  // Re-render title cards (enable/disable draggable)
+  document.querySelectorAll('.title-card').forEach(c => {
+    c.draggable = !kbdMode;
+    c.style.cursor = kbdMode ? 'default' : 'grab';
+  });
+  // Re-render episode slots to add/remove selects
+  if (S.episodes.length) renderEpSlots();
+});
+
+// ---------------------------------------------------------------------------
+// Arr Activity panel
+// ---------------------------------------------------------------------------
+let actSource  = 'sonarr';
+let actRefreshTimer = null;
+
+document.getElementById('act-tab-sonarr').addEventListener('click', () => switchActTab('sonarr'));
+document.getElementById('act-tab-radarr').addEventListener('click', () => switchActTab('radarr'));
+document.getElementById('btn-refresh-activity').addEventListener('click', () => loadActivity(true));
+
+function switchActTab(source) {
+  actSource = source;
+  document.getElementById('act-tab-sonarr').classList.toggle('active', source === 'sonarr');
+  document.getElementById('act-tab-sonarr').setAttribute('aria-selected', String(source === 'sonarr'));
+  document.getElementById('act-tab-radarr').classList.toggle('active', source === 'radarr');
+  document.getElementById('act-tab-radarr').setAttribute('aria-selected', String(source === 'radarr'));
+  loadActivity(true);
+}
+
+async function loadActivity(showLoading = false) {
+  const panel = document.getElementById('act-panel');
+  if (showLoading) {
+    panel.innerHTML = '<div class="empty-msg">Loading…</div>';
+  }
+  try {
+    const data = await api.get(`/api/activity?source=${actSource}`);
+    renderActivity(data);
+  } catch(err) {
+    panel.innerHTML = `<div class="empty-msg" style="color:var(--error)">Error: ${esc(err.message)}</div>`;
+  }
+}
+
+function relativeTime(isoDate) {
+  if (!isoDate) return '';
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+const EVT_ICON = {
+  grabbed:                    ['↓', 'evt-grabbed'],
+  downloadFolderImported:     ['✓', 'evt-imported'],
+  downloadIgnored:            ['–', 'evt-ignored'],
+  episodeFileDeleted:         ['✕', 'evt-deleted'],
+  movieFileDeleted:           ['✕', 'evt-deleted'],
+  episodeFileRenamed:         ['✎', 'evt-ignored'],
+  movieFileRenamed:           ['✎', 'evt-ignored'],
+  downloadFailed:             ['✕', 'evt-warning'],
+};
+
+function renderActivity({ queue, history }) {
+  const panel = document.getElementById('act-panel');
+  panel.innerHTML = '';
+
+  // ── Queue ────────────────────────────────────────────────────────────
+  const qHead = document.createElement('div');
+  qHead.className = 'act-sub';
+  qHead.textContent = `Queue (${queue.length})`;
+  panel.appendChild(qHead);
+
+  if (queue.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-msg';
+    empty.style.cssText = 'padding:.5rem;font-size:.78rem';
+    empty.textContent = 'Nothing in queue';
+    panel.appendChild(empty);
+  } else {
+    for (const item of queue) {
+      const el = buildQueueItem(item);
+      panel.appendChild(el);
+    }
+  }
+
+  // ── History ──────────────────────────────────────────────────────────
+  const hHead = document.createElement('div');
+  hHead.className = 'act-sub';
+  hHead.style.marginTop = '.75rem';
+  hHead.textContent = `Recent History (${history.length})`;
+  panel.appendChild(hHead);
+
+  if (history.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-msg';
+    empty.style.cssText = 'padding:.5rem;font-size:.78rem';
+    empty.textContent = 'No history yet';
+    panel.appendChild(empty);
+  } else {
+    for (const item of history) {
+      const el = buildHistoryItem(item);
+      panel.appendChild(el);
+    }
+  }
+}
+
+function buildQueueItem(item) {
+  const el = document.createElement('div');
+  el.className = 'act-item';
+
+  const statusIcon = item.trackStatus === 'warning' ? '⚠' :
+                     item.status === 'downloading'   ? '↓' :
+                     item.status === 'completed'     ? '✓' :
+                     item.status === 'paused'        ? '⏸' :
+                     item.status === 'failed'        ? '✕' : '…';
+  const iconCls = item.trackStatus === 'warning' || item.status === 'failed'
+    ? 'evt-warning' : item.status === 'completed' ? 'evt-imported' : 'evt-grabbed';
+
+  const icon = document.createElement('span');
+  icon.className = `act-icon ${iconCls}`;
+  icon.textContent = statusIcon;
+
+  const body = document.createElement('div');
+  body.className = 'act-body';
+
+  const title = document.createElement('div');
+  title.className = 'act-title';
+  title.textContent = item.title
+    ? `${item.title}${item.epInfo ? ' · ' + item.epInfo : ''}${item.epTitle ? ' — ' + item.epTitle : ''}`
+    : item.release || '—';
+
+  const meta = document.createElement('div');
+  meta.className = 'act-meta';
+
+  const parts = [item.status, item.quality, item.client].filter(Boolean);
+  parts.forEach(p => {
+    const s = document.createElement('span');
+    s.textContent = p;
+    meta.appendChild(s);
+  });
+
+  if (item.pct !== null) {
+    const pctSpan = document.createElement('span');
+    pctSpan.textContent = `${item.pct}%`;
+    pctSpan.style.fontWeight = '600';
+    pctSpan.style.color = 'var(--info)';
+    meta.appendChild(pctSpan);
+  }
+
+  const rel = document.createElement('div');
+  rel.className = 'act-release';
+  rel.textContent = item.release || '';
+  rel.title = item.release || '';
+
+  body.appendChild(title);
+  body.appendChild(meta);
+  if (item.release) body.appendChild(rel);
+
+  if (item.pct !== null && item.pct < 100) {
+    const bar = document.createElement('div');
+    bar.className = 'act-progress';
+    const fill = document.createElement('div');
+    fill.className = 'act-progress-bar';
+    fill.style.width = `${item.pct}%`;
+    bar.appendChild(fill);
+    body.appendChild(bar);
+  }
+
+  // Ignore button — removes from arr queue, keeps seeding
+  const ignBtn = document.createElement('button');
+  ignBtn.className = 'btn-ghost btn-xs';
+  ignBtn.textContent = 'Ignore';
+  ignBtn.title = 'Remove from arr queue — torrent keeps seeding';
+  ignBtn.setAttribute('aria-label', `Ignore ${item.title || item.release} — keep seeding`);
+  ignBtn.style.flexShrink = '0';
+  ignBtn.addEventListener('click', async () => {
+    ignBtn.disabled = true;
+    ignBtn.textContent = '…';
+    try {
+      await api.del(`/api/activity/${item.id}?source=${actSource}`);
+      ignBtn.textContent = 'Ignored';
+      ignBtn.style.color = 'var(--success)';
+      // Refresh after a short delay so the item disappears
+      setTimeout(() => loadActivity(false), 1500);
+    } catch(err) {
+      ignBtn.disabled = false;
+      ignBtn.textContent = 'Error';
+      ignBtn.title = err.message;
+    }
+  });
+
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;flex-direction:column;gap:.25rem;flex-shrink:0';
+
+  // Disc-ready: Sonarr/Radarr couldn't auto-import — offer to scan in Discarr
+  if (item.discReady) {
+    const scanBtn = document.createElement('button');
+    scanBtn.className = 'btn-primary btn-xs';
+    scanBtn.textContent = '📀 Scan';
+    scanBtn.title = item.outputPath
+      ? `Scan disc at: ${item.outputPath}`
+      : 'Pre-fill scan path and scan this disc';
+    scanBtn.setAttribute('aria-label', `Scan disc for ${item.title || item.release} in Discarr`);
+    scanBtn.addEventListener('click', () => {
+      const pathInput = document.getElementById('scan-path');
+      if (pathInput && item.outputPath) {
+        pathInput.value = item.outputPath;
+      }
+      // Scroll to scan section and focus the path input (or trigger scan)
+      const scanSection = document.getElementById('sec-scan');
+      if (scanSection) scanSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (pathInput) {
+        pathInput.focus();
+        // If we have the path, auto-trigger the scan
+        if (item.outputPath) startScan();
+      }
+    });
+    btns.appendChild(scanBtn);
+  }
+
+  btns.appendChild(ignBtn);
+  el.appendChild(icon);
+  el.appendChild(body);
+  el.appendChild(btns);
+  return el;
+}
+
+function buildHistoryItem(item) {
+  const el = document.createElement('div');
+  el.className = 'act-item';
+
+  const [iconChar, iconCls] = EVT_ICON[item.eventType] || ['·', 'evt-ignored'];
+
+  const icon = document.createElement('span');
+  icon.className = `act-icon ${iconCls}`;
+  icon.textContent = iconChar;
+
+  const body = document.createElement('div');
+  body.className = 'act-body';
+
+  const title = document.createElement('div');
+  title.className = 'act-title';
+  title.textContent = item.title
+    ? `${item.title}${item.epInfo ? ' · ' + item.epInfo : ''}${item.epTitle ? ' — ' + item.epTitle : ''}`
+    : item.release || '—';
+
+  const meta = document.createElement('div');
+  meta.className = 'act-meta';
+
+  const evtLabel = {
+    grabbed: 'grabbed', downloadFolderImported: 'imported',
+    downloadIgnored: 'ignored', episodeFileDeleted: 'deleted',
+    movieFileDeleted: 'deleted', downloadFailed: 'failed',
+    episodeFileRenamed: 'renamed', movieFileRenamed: 'renamed',
+  }[item.eventType] || item.eventType;
+
+  const evtSpan = document.createElement('span');
+  evtSpan.className = iconCls;
+  evtSpan.textContent = evtLabel;
+  meta.appendChild(evtSpan);
+
+  [item.quality, item.client].filter(Boolean).forEach(p => {
+    const s = document.createElement('span'); s.textContent = p; meta.appendChild(s);
+  });
+
+  body.appendChild(title);
+  body.appendChild(meta);
+
+  if (item.release) {
+    const rel = document.createElement('div');
+    rel.className = 'act-release';
+    rel.textContent = item.release;
+    rel.title = item.release;
+    body.appendChild(rel);
+  }
+
+  const age = document.createElement('span');
+  age.className = 'act-age';
+  age.textContent = relativeTime(item.date);
+  age.title = item.date || '';
+
+  el.appendChild(icon);
+  el.appendChild(body);
+  el.appendChild(age);
+  return el;
+}
+
+// Auto-refresh activity every 60 seconds
+function startActivityRefresh() {
+  if (actRefreshTimer) clearInterval(actRefreshTimer);
+  actRefreshTimer = setInterval(() => loadActivity(false), 60_000);
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+init();
+</script>
+</body>
+</html>

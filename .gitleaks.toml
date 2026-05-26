@@ -1,0 +1,37 @@
+title = "Discarr gitleaks config"
+
+[extend]
+# Include gitleaks default ruleset
+useDefault = true
+
+# Arr application API keys (32-char hex, typical for Sonarr/Radarr/etc.)
+[[rules]]
+id          = "arr-api-key"
+description = "Arr application API key in source"
+regex       = '''(?i)(sonarr|radarr|lidarr|readarr|prowlarr|bazarr)[_\-]?api[_\-]?key['":\s=]+[a-f0-9]{32}'''
+tags        = ["api-key", "arr"]
+
+# TMDB API key pattern
+[[rules]]
+id          = "tmdb-api-key"
+description = "TMDB API key"
+regex       = '''(?i)tmdb[_\-]?api[_\-]?key['":\s=]+[a-zA-Z0-9]{32,}'''
+tags        = ["api-key", "tmdb"]
+
+[allowlist]
+description = "Safe paths and placeholder values"
+paths       = [
+    '''\.gitignore''',
+    '''\.gitleaks\.toml''',
+    '''CLAUDE\.md''',
+    '''api-keys\.conf\.example''',
+    '''\.env\.example''',
+]
+regexes     = [
+    '''your[-_]key[-_]here''',
+    '''placeholder''',
+    '''changeme''',
+    '''<.*?>''',
+    '''\$\{[A-Z_]+\}''',
+    '''xxxx+''',
+]
