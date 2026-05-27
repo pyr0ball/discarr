@@ -1,22 +1,23 @@
 # Discarr: disc scanning and encoding queue
-# ffmpeg/ffprobe: VIDEO_TS/BDMV metadata scanning and local encode dispatch
-# HandBrake: optional HEVC encoder (ffmpeg is the fallback)
+# ffmpeg/ffprobe: VIDEO_TS/BDMV metadata scanning and HEVC encode dispatch
 # openssh-client: remote encode dispatch to SSH transcode workers
+#
+# HandBrake is NOT included in this image — ffmpeg handles encoding by default.
+# If you need HandBrake (preset system, forced-subtitle burn-in), use the
+# handbrake variant: pyr0ball/discarr:handbrake
+# Or install HandBrake natively via: sudo bash install.sh
 
 # Node 22 is the current LTS (Node 20 reached EOL 2026-04-30)
 FROM node:22-alpine
 
-# Upgrade all base packages to pick up security patches from Alpine before
-# adding our own deps. Combining upgrade + add in one RUN avoids an extra
-# layer and ensures the package index stays consistent.
+# Upgrade all base packages first to pick up Alpine security patches,
+# then add runtime dependencies in the same layer.
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
         ffmpeg \
-        handbrake \
         openssh-client
 
-# npm's bundled deps (tar, minimatch) carry their own CVE surface.
-# Updating to latest npm gets the patched versions.
+# Update npm to patch bundled tar/minimatch CVEs
 RUN npm install -g npm@latest && npm cache clean --force
 
 WORKDIR /app

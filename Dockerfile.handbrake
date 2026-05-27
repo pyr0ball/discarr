@@ -1,0 +1,24 @@
+# Discarr — HandBrake variant
+# Includes HandBrake for preset-based encoding and forced-subtitle burn-in.
+# NOTE: Alpine's HandBrake package depends on both ffmpeg 8.x AND ffmpeg 7.x,
+# which increases the CVE surface area compared to the default image.
+# Use this variant only if you specifically need HandBrake features.
+#
+# Build: docker build -f Dockerfile.handbrake -t pyr0ball/discarr:handbrake .
+
+FROM node:22-alpine
+
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
+        ffmpeg \
+        handbrake \
+        openssh-client
+
+RUN npm install -g npm@latest && npm cache clean --force
+
+WORKDIR /app
+COPY server.js scanner.js ./
+COPY public/ ./public/
+
+EXPOSE 8603
+CMD ["node", "server.js"]
