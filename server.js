@@ -40,6 +40,7 @@ const SETTINGS_KEYS = new Set([
     'TDARR_URL','TDARR_LIBRARY_ID','ENCODE_SSH_HOST',
     'FFMPEG_BIN','FFPROBE_BIN','OUTPUT_BASE',
 ]);
+const PRESET_KEY_RE = /^PRESET_[A-Z0-9_]+$/;
 
 function loadConfig() {
     // Load primary config (may be read-only in Docker)
@@ -383,12 +384,30 @@ async function notifySonarr(outputPath) {
 // Encode presets
 // ---------------------------------------------------------------------------
 const PRESETS = {
+    'remux':          ['-c', 'copy'],
     'hevc-nvenc':     ['-c:v','hevc_nvenc','-rc','constqp','-qp','22','-preset','p4','-c:a','copy'],
     'hevc-qsv':       ['-c:v','hevc_qsv','-global_quality','22','-c:a','copy'],
     'hevc-vaapi':     ['-c:v','hevc_vaapi','-qp','22','-c:a','copy'],
     'x265-software':  ['-c:v','libx265','-crf','22','-preset','medium','-c:a','copy'],
     'h264-nvenc':     ['-c:v','h264_nvenc','-rc','constqp','-qp','22','-preset','p4','-c:a','copy'],
 };
+
+// Parse PRESET_<name>=<ffmpeg args> entries from config into additional presets.
+// Names are lowercased and underscores converted to hyphens.
+function parseCustomPresets(config) {
+    const custom = {};
+    for (const [k, v] of Object.entries(config)) {
+        if (k.startsWith('PRESET_') && v) {
+            const name = k.slice(7).toLowerCase().replace(/_/g, '-');
+            custom[name] = v.trim().split(/\s+/);
+        }
+    }
+    return custom;
+}
+
+function getEffectivePresets(config) {
+    return { ...PRESETS, ...parseCustomPresets(config) };
+}
 
 // HandBrakeCLI preset templates — substitution handled in buildHandbrakeCmd()
 // These use {dvd_path}, {title_set}, {input}, {output} tokens (not ffmpeg args)
@@ -487,7 +506,7 @@ async function runLocalEncode(job, mapping) {
         });
     }
 
-    const presetArgs = PRESETS[preset] || PRESETS['x265-software'];
+    const presetArgs = getEffectivePresets(cfg)[preset] || PRESETS['x265-software'];
     const ffmpegBin  = process.env.FFMPEG_BIN || 'ffmpeg';
 
     const inputArgs = diskType === 'dvd'
@@ -518,8 +537,11 @@ async function runLocalEncode(job, mapping) {
     }
     if (mapping.endSec > 0) postInputArgs.push('-t', String(mapping.endSec - (mapping.startSec || 0)));
 
-    // For DVD sources, pcm_dvd audio cannot be stream-copied into MKV — transcode to AAC.
-    const audioOverride = diskType === 'dvd' ? ['-c:a', 'aac', '-b:a', '192k'] : [];
+    // pcm_dvd audio cannot be stream-copied into MKV. For remux use lossless FLAC;
+    // for encode presets transcode to AAC. BDMV sources need no override.
+    const audioOverride = diskType === 'dvd'
+        ? (preset === 'remux' ? ['-c:a', 'flac'] : ['-c:a', 'aac', '-b:a', '192k'])
+        : [];
 
     const args = ['-y', ...preInputArgs, ...inputArgs, ...trackArgs,
                   ...postInputArgs, ...presetArgs, ...audioOverride, outputPath];
@@ -592,7 +614,7 @@ async function runSshEncode(job, mapping, sshHost) {
         });
     }
 
-    const presetArgs = PRESETS[preset] || PRESETS['x265-software'];
+    const presetArgs = getEffectivePresets(cfg)[preset] || PRESETS['x265-software'];
     const ffmpegBin  = process.env.FFMPEG_BIN || 'ffmpeg';
 
     const concatInput = diskType === 'dvd'
@@ -616,7 +638,9 @@ async function runSshEncode(job, mapping, sshHost) {
     }
     if (mapping.endSec > 0) postInputArgs.push('-t', String(mapping.endSec - (mapping.startSec || 0)));
 
-    const audioOverride = diskType === 'dvd' ? ['-c:a', 'aac', '-b:a', '192k'] : [];
+    const audioOverride = diskType === 'dvd'
+        ? (preset === 'remux' ? ['-c:a', 'flac'] : ['-c:a', 'aac', '-b:a', '192k'])
+        : [];
 
     const ffmpegArgs = [...preInputArgs, '-y', '-i', concatInput,
                         ...trackArgs, ...postInputArgs, ...presetArgs, ...audioOverride, outputPath]
@@ -941,7 +965,7 @@ const server = http.createServer(async (req, res) => {
             tdarr:     !!(cfg.TDARR_URL && cfg.TDARR_LIBRARY_ID),
             encodeHost: cfg.ENCODE_SSH_HOST || null,
             outputBase: cfg.OUTPUT_BASE || null,
-            presets:   [...Object.keys(PRESETS), ...Object.keys(HANDBRAKE_PRESETS)],
+            presets:   [...Object.keys(getEffectivePresets(cfg)), ...Object.keys(HANDBRAKE_PRESETS)],
         });
     }
 
@@ -1128,6 +1152,10 @@ const server = http.createServer(async (req, res) => {
         cfg = loadConfig();
         // Return URL/non-secret values as-is; mask API keys so they're not sent to browser
         const masked = k => cfg[k] ? '[configured]' : '';
+        const presetEntries = {};
+        for (const [k, v] of Object.entries(cfg)) {
+            if (PRESET_KEY_RE.test(k)) presetEntries[k] = v;
+        }
         return json(res, 200, {
             SONARR_URL:      cfg.SONARR_URL      || '',
             SONARR_API_KEY:  masked('SONARR_API_KEY'),
@@ -1138,6 +1166,7 @@ const server = http.createServer(async (req, res) => {
             FFMPEG_BIN:      cfg.FFMPEG_BIN        || '',
             FFPROBE_BIN:     cfg.FFPROBE_BIN       || '',
             OUTPUT_BASE:     cfg.OUTPUT_BASE       || '',
+            ...presetEntries,
         });
     }
 
@@ -1149,7 +1178,7 @@ const server = http.createServer(async (req, res) => {
 
         const updates = {};
         for (const [k, v] of Object.entries(body)) {
-            if (!SETTINGS_KEYS.has(k) || typeof v !== 'string') continue;
+            if ((!SETTINGS_KEYS.has(k) && !PRESET_KEY_RE.test(k)) || typeof v !== 'string') continue;
             if (v === '[configured]') continue;   // masked placeholder — skip
             updates[k] = v;                        // empty string = clear override
         }

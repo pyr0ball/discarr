@@ -266,6 +266,13 @@ input:focus-visible,select:focus-visible{outline:none}
       <input type="text" id="cfg-output-base" name="OUTPUT_BASE"
         placeholder="/Library/Series" autocomplete="off" />
     </div>
+
+    <div class="settings-group-title" style="grid-column:1/-1">Custom Encode Presets</div>
+    <div id="cfg-presets-list" style="grid-column:1/-1;display:flex;flex-direction:column;gap:.4rem"></div>
+    <div style="grid-column:1/-1;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+      <button class="btn-ghost btn-sm" id="btn-add-preset" type="button">+ Add preset</button>
+      <span style="font-size:.7rem;color:var(--muted)">Name + ffmpeg codec args — e.g. <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:3px">-c:v libsvtav1 -crf 30 -c:a copy</code></span>
+    </div>
   </div>
   <div class="settings-footer">
     <button class="btn-primary btn-sm" id="btn-save-settings">Save Settings</button>
@@ -354,6 +361,7 @@ input:focus-visible,select:focus-visible{outline:none}
       <label for="preset-select">Encode preset</label>
       <select id="preset-select">
         <optgroup label="ffmpeg">
+          <option value="remux">Remux (stream copy — no re-encode)</option>
           <option value="hevc-nvenc">HEVC NVENC (NVIDIA GPU)</option>
           <option value="hevc-qsv">HEVC QSV (Intel GPU)</option>
           <option value="hevc-vaapi">HEVC VAAPI (AMD GPU)</option>
@@ -365,6 +373,7 @@ input:focus-visible,select:focus-visible{outline:none}
           <option value="handbrake-h264">HandBrake x264 H.264</option>
           <option value="handbrake-nvenc">HandBrake NVENC HEVC</option>
         </optgroup>
+        <optgroup label="User-defined" id="preset-user-optgroup" style="display:none"></optgroup>
         <optgroup label="Custom">
           <option value="custom">Custom script…</option>
         </optgroup>
@@ -457,6 +466,7 @@ const api = {
 async function init() {
   S.config = await api.get('/api/config').catch(()=>({}));
   renderChips();
+  syncUserPresetDropdown();
   const host = S.config.encodeHost;
   if (host) document.getElementById('encode-host').value = host;
   // Show/hide tabs based on what's configured
@@ -1681,17 +1691,65 @@ document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('btn-settings').setAttribute('aria-expanded', 'false');
 });
 
+let originalPresetKeys = new Set();
+
+function makePresetRow(name, args) {
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:.4rem;align-items:center';
+  const nameEl = document.createElement('input');
+  nameEl.type = 'text'; nameEl.placeholder = 'preset-name';
+  nameEl.value = name;
+  nameEl.style.cssText = 'width:150px;flex-shrink:0;font-size:.82rem;padding:.3rem .5rem';
+  nameEl.dataset.role = 'preset-name';
+  const argsEl = document.createElement('input');
+  argsEl.type = 'text'; argsEl.placeholder = '-c:v libsvtav1 -crf 30 -c:a copy';
+  argsEl.value = args;
+  argsEl.style.cssText = 'flex:1;font-size:.82rem;padding:.3rem .5rem';
+  argsEl.dataset.role = 'preset-args';
+  const rmBtn = document.createElement('button');
+  rmBtn.type = 'button'; rmBtn.className = 'btn-ghost btn-xs';
+  rmBtn.textContent = '×'; rmBtn.title = 'Remove';
+  rmBtn.addEventListener('click', () => row.remove());
+  row.append(nameEl, argsEl, rmBtn);
+  return row;
+}
+
+function syncUserPresetDropdown() {
+  const og = document.getElementById('preset-user-optgroup');
+  og.replaceChildren();
+  const builtIn = new Set(['remux','hevc-nvenc','hevc-qsv','hevc-vaapi','x265-software','h264-nvenc',
+    'handbrake-hevc','handbrake-h264','handbrake-nvenc']);
+  const custom = (S.config.presets || []).filter(p => !builtIn.has(p));
+  custom.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p; opt.textContent = p + ' (custom)';
+    og.appendChild(opt);
+  });
+  og.style.display = custom.length ? '' : 'none';
+}
+
 async function loadSettingsPanel() {
   const settings = await api.get('/api/settings').catch(() => ({}));
   for (const [key, elId] of Object.entries(settingsFieldMap)) {
     const el = document.getElementById(elId);
     if (!el) continue;
     const val = settings[key] || '';
-    // For masked placeholders use the input placeholder text, not the value
     el.value = val === '[configured]' ? '' : val;
     if (val === '[configured]') el.placeholder = '[configured — leave blank to keep]';
   }
+  const list = document.getElementById('cfg-presets-list');
+  list.replaceChildren();
+  originalPresetKeys = new Set();
+  for (const [k, v] of Object.entries(settings)) {
+    if (!k.startsWith('PRESET_')) continue;
+    originalPresetKeys.add(k);
+    list.appendChild(makePresetRow(k.slice(7).toLowerCase().replace(/_/g, '-'), v));
+  }
 }
+
+document.getElementById('btn-add-preset').addEventListener('click', () => {
+  document.getElementById('cfg-presets-list').appendChild(makePresetRow('', ''));
+});
 
 document.getElementById('btn-save-settings').addEventListener('click', async () => {
   const btn    = document.getElementById('btn-save-settings');
@@ -1706,12 +1764,27 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
     if (el) body[key] = el.value.trim();
   }
 
+  // Collect custom preset rows
+  const currentPresetKeys = new Set();
+  for (const row of document.getElementById('cfg-presets-list').children) {
+    const nameRaw = row.querySelector('[data-role="preset-name"]')?.value.trim() || '';
+    const args    = row.querySelector('[data-role="preset-args"]')?.value.trim() || '';
+    if (!nameRaw) continue;
+    const key = 'PRESET_' + nameRaw.toUpperCase().replace(/-/g, '_').replace(/[^A-Z0-9_]/g, '');
+    if (!key.slice(7)) continue;
+    body[key] = args;
+    currentPresetKeys.add(key);
+  }
+  // Clear any preset keys the user removed
+  for (const k of originalPresetKeys) {
+    if (!currentPresetKeys.has(k)) body[k] = '';
+  }
+
   try {
     await api.post('/api/settings', body);
-    // Re-probe capabilities and refresh chips
     S.config = await api.get('/api/config').catch(() => S.config);
     renderChips();
-    // Update encode-host field if changed
+    syncUserPresetDropdown();
     if (body.ENCODE_SSH_HOST !== undefined) {
       const encEl = document.getElementById('encode-host');
       if (encEl && body.ENCODE_SSH_HOST) encEl.value = body.ENCODE_SSH_HOST;
@@ -1719,7 +1792,7 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
     status.textContent = '✓ Saved';
     status.className   = 'save-status ok';
   } catch(err) {
-    status.textContent = `Error: ${err.message}`;
+    status.textContent = 'Error: ' + err.message;
     status.className   = 'save-status err';
   } finally {
     btn.disabled = false;

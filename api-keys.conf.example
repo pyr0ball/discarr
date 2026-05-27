@@ -27,3 +27,10 @@ ENCODE_SSH_HOST=user@your-encode-host
 # FFMPEG_BIN=/usr/bin/ffmpeg
 # FFPROBE_BIN=/usr/bin/ffprobe
 # OUTPUT_BASE=/path/to/output
+
+# --- Custom encode presets (optional) ---
+# PRESET_<name> adds a user-defined preset to the encode dropdown.
+# Value is a space-separated list of ffmpeg codec arguments.
+# Examples:
+# PRESET_av1_svt=-c:v libsvtav1 -crf 30 -preset 6 -c:a copy
+# PRESET_h264_hq=-c:v libx264 -crf 18 -preset slow -c:a copy
