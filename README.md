@@ -20,9 +20,9 @@ No npm packages. No Python. No config files to edit by hand — just a browser, 
 
 ## Screenshots
 
-![Discarr — main UI](docs/screenshots/01-main.png)
+![Discarr: main UI showing scan source and encode history](docs/screenshots/01-main.png)
 
-![Discarr — title mapping](docs/screenshots/03-title-mapping.png)
+![Discarr: title mapping with completed drag-and-drop assignment](docs/screenshots/05-mapped.png)
 
 ---
 

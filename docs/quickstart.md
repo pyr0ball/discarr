@@ -59,15 +59,21 @@ Open **http://localhost:8603**.
 
 ## 5. Map titles to arr items
 
-![Title mapping — disc titles on the left, Sonarr/Radarr search on the right](screenshots/03-title-mapping.png)
-
-
 For each title:
 
 1. Choose **TV (Sonarr)** or **Movie (Radarr)**
-2. Search for the series or movie name
-3. For TV: select the season and episode(s) the title maps to
-4. Click **Queue**
+2. Click **Browse Sonarr** or **Browse Radarr** to open your library
+3. Type a partial title in the search box to filter results
+
+    ![Browse Radarr: filtering by partial title](screenshots/03-radarr-filter.png)
+
+4. Drag the title card from the left panel and drop it onto the slot on the right
+
+    ![Title mapping complete: disc title mapped, Review & Queue button active](screenshots/05-mapped.png)
+
+    A green border confirms the mapping. The counter updates (e.g. "1 of 2 title(s) mapped").
+
+5. Repeat for each unmapped title, then click **Review & Queue →**
 
 ## 6. Monitor the encode
 

@@ -8,9 +8,9 @@ Discarr is a self-hosted web UI that bridges disc ripping (VIDEO_TS / BDMV / ISO
 
 ## Screenshots
 
-![Discarr main UI — scan source and encode history](screenshots/01-main.png)
+![Discarr main UI: scan source and encode history](screenshots/01-main.png)
 
-![Title mapping — map disc titles to Sonarr episodes](screenshots/03-title-mapping.png)
+![Title mapping: completed drag-and-drop assignment with Review & Queue active](screenshots/05-mapped.png)
 
 ## How it works
 
