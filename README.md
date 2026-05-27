@@ -91,21 +91,36 @@ sudo DISCARR_INSTALL_DIR=/opt/discarr DISCARR_PORT=8603 REGISTER_SERVICE=yes bas
 
 ### Docker
 
-Pre-built image (includes ffmpeg, ffprobe, HandBrake, libdvd*, openssh-client):
+Two pre-built variants are available:
+
+| Tag | Includes | Use when |
+|---|---|---|
+| `latest` / `0.1.2` | ffmpeg, openssh-client | Default — ffmpeg handles all encoding |
+| `handbrake` | + HandBrake | You need HandBrake presets or forced-subtitle burn-in |
 
 ```bash
+# Default (recommended)
 docker run -d \
   -p 8603:8603 \
   -v ~/.config/media-postprocessor:/root/.config/media-postprocessor:ro \
   -v ~/.local/share/discarr:/root/.local/share/discarr \
   -v /path/to/media:/media \
   pyr0ball/discarr:latest
+
+# HandBrake variant
+docker run -d \
+  -p 8603:8603 \
+  -v ~/.config/media-postprocessor:/root/.config/media-postprocessor:ro \
+  -v ~/.local/share/discarr:/root/.local/share/discarr \
+  -v /path/to/media:/media \
+  pyr0ball/discarr:handbrake
 ```
 
 Or build from source:
 
 ```bash
-docker build -t discarr .
+docker build -t discarr .                                    # default
+docker build -f Dockerfile.handbrake -t discarr:handbrake . # HandBrake variant
 docker run -d \
   -p 8603:8603 \
   -v ~/.config/media-postprocessor:/root/.config/media-postprocessor:ro \
