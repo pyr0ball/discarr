@@ -1,0 +1,64 @@
+site_name: Discarr
+site_description: Disc rip to Sonarr/Radarr pipeline — web UI for VIDEO_TS/BDMV/ISO import
+site_url: https://pyr0ball.github.io/discarr
+repo_url: https://github.com/pyr0ball/discarr
+repo_name: pyr0ball/discarr
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: install.md
+    - Quick Start: quickstart.md
+  - Configuration:
+    - Config Reference: config.md
+    - Environment Variables: env.md
+  - Integrations:
+    - Sonarr: integrations/sonarr.md
+    - Radarr: integrations/radarr.md
+    - qBittorrent: integrations/qbittorrent.md
+    - Tdarr: integrations/tdarr.md
+  - Transcoders:
+    - ffmpeg: transcoders/ffmpeg.md
+    - HandBrake: transcoders/handbrake.md
+    - SSH Transcode Workers: transcoders/ssh-workers.md
+  - Reference:
+    - Disc Formats: reference/disc-formats.md
+    - Troubleshooting: reference/troubleshooting.md
