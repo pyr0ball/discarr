@@ -50,11 +50,17 @@ Open **http://localhost:8603**.
 
 ## 4. Scan a disc
 
+![Discarr scanning a disc — layout detection in progress](screenshots/02-scanning.png)
+
+
 1. Paste the path to a disc directory or ISO (e.g. `/media/disc/VIDEO_TS`) into the **Path** field
 2. Click **Scan**
 3. Discarr lists the disc titles with duration and chapter count
 
 ## 5. Map titles to arr items
+
+![Title mapping — disc titles on the left, Sonarr/Radarr search on the right](screenshots/03-title-mapping.png)
+
 
 For each title:
 

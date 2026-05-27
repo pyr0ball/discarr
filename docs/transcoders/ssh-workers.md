@@ -30,8 +30,8 @@ Arr import
 ## Configuration
 
 ```bash
-SSH_TRANSCODE_HOST=strahl         # hostname or IP of the encode machine
-SSH_TRANSCODE_USER=alan           # SSH user on that machine
+SSH_TRANSCODE_HOST=encode-box         # hostname or IP of the encode machine
+SSH_TRANSCODE_USER=mediauser           # SSH user on that machine
 SSH_TRANSCODE_MEDIA_ROOT=/media   # path where media is accessible on the remote
 SSH_TRANSCODE_KEY=~/.ssh/id_ed25519  # optional: SSH key (defaults to ~/.ssh/id_rsa)
 ```
@@ -47,13 +47,13 @@ ssh-keygen -t ed25519 -C "discarr-transcode"
 Copy the public key to the remote host:
 
 ```bash
-ssh-copy-id -i ~/.ssh/id_ed25519.pub alan@strahl
+ssh-copy-id -i ~/.ssh/id_ed25519.pub mediauser@encode-box
 ```
 
 Verify passwordless login:
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 alan@strahl echo "OK"
+ssh -i ~/.ssh/id_ed25519 mediauser@encode-box echo "OK"
 ```
 
 ## Shared media mount (recommended)

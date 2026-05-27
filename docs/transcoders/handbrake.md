@@ -37,7 +37,7 @@ HandBrakeCLI --preset-list
 Export a preset from HandBrake's GUI, save it to a JSON file, and reference it:
 
 ```bash
-HANDBRAKE_PRESET_FILE=/home/alan/.config/handbrake/my-preset.json
+HANDBRAKE_PRESET_FILE=/home/mediauser/.config/handbrake/my-preset.json
 HANDBRAKE_PRESET=My Custom Preset
 ```
 

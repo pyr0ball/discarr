@@ -18,6 +18,14 @@ No npm packages. No Python. No config files to edit by hand — just a browser, 
 
 ---
 
+## Screenshots
+
+![Discarr — main UI](docs/screenshots/01-main.png)
+
+![Discarr — title mapping](docs/screenshots/03-title-mapping.png)
+
+---
+
 ## Features
 
 - **Disc scanning** — detects `VIDEO_TS`, `BDMV`, multi-disc, and ISO structures automatically

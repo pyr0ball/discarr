@@ -49,8 +49,8 @@ HANDBRAKE_PRESET=H.265 MKV 1080p30
 When set, Discarr sends encode jobs to a remote host over SSH instead of running them locally.
 
 ```bash
-SSH_TRANSCODE_HOST=strahl
-SSH_TRANSCODE_USER=alan
+SSH_TRANSCODE_HOST=encode-box
+SSH_TRANSCODE_USER=mediauser
 SSH_TRANSCODE_MEDIA_ROOT=/media
 # Optional: override SSH key path (defaults to ~/.ssh/id_rsa)
 SSH_TRANSCODE_KEY=~/.ssh/id_ed25519
